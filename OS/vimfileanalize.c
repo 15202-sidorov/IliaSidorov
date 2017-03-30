@@ -5,12 +5,16 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <sys/mman.h>
+#include <string.h>
+
 
 #define FileName "vimfileanalize.c"
 #define MAXSTRING 200
 #define TIME_OUT 5
 
-int fd = 0;
+char *file = NULL;
+off_t fileLength = 0;
 
 typedef 
 	struct Note {
@@ -30,7 +34,8 @@ void createTable(Note *allNotes) {
 	int currentOffset = 0;
 	int countOffset = 0;
 	int line = 1;
-	while (0 != read(fd,&inputChar,sizeof(char))) {
+	while (countOffset <= fileLength) {
+		inputChar = *file;
 		countLength++;
 		if ('\n' == inputChar) {
 			initNote(allNotes + line,currentOffset,countLength);
@@ -39,7 +44,9 @@ void createTable(Note *allNotes) {
 			currentOffset = countOffset + 1;
 		}
 		countOffset++;
+		file++;
 	}
+	file -= countOffset;
 }
 
 void showString(int line, const Note *table) {
@@ -48,46 +55,44 @@ void showString(int line, const Note *table) {
 		return;
 	}
 
-	if (-1 == lseek(fd,table[line].location,0)) {
-		perror("Could not move the offset\n");
-		return;
-	}
+	char * currentChar = file + table[line].location;
 
-	char *resultString = (char *)malloc(table[line].length + 1);
-	if (-1 == read(fd,resultString,table[line].length)) {
-		perror("Could not read string\n");
-		return;
-	}
+	char *resultString = (char *)calloc(table[line].length + 1,sizeof(char));
 
+	strncpy(resultString,currentChar,table[line].length);
 	resultString[table[line].length] = '\0';
 	printf("%s",resultString);
+	
 	free(resultString);
 }
 
 void showEverything(int sig) {
-	char outputChar = 0;
-	if (-1 == lseek(fd,0,0)) {
-		perror("Could not move to the start of the file\n");
-		return;
-	}
-	while (0 != read(fd,&outputChar,sizeof(char))) {
-		printf("%c",outputChar);
+	int count = 0;
+	while (count < fileLength) {
+		printf("%c",*file);
+		file++;
+		count++;
 	}
 	kill(getpid(),SIGALRM);
 	return;
 }
 
 int main(int argc, char **argv) {
-	fd = open(FileName,O_RDONLY);
+	
+	int fd = open(FileName,O_RDONLY);
 	if (-1 == fd) {
 		return 1;
 	}
-	Note table[MAXSTRING] = {0};
 	
+	fileLength = (size_t)lseek(fd,0,SEEK_END);
+	file = mmap(NULL,fileLength,PROT_READ,MAP_PRIVATE,fd,0);
+	int counter = 0;
+	
+	Note table[MAXSTRING] = {0};
 	createTable(table);
 
+
 	int inputLine = 1;
-	//signal(signum,disposition)
 	if (signal(SIGALRM,showEverything) == SIG_ERR) {
 		perror("Could not set the signal\n");
 		return 1;
@@ -98,7 +103,6 @@ int main(int argc, char **argv) {
 		alarm(0);
 		showString(inputLine,table);
 	}
-
 	close(fd);
 	return 0;
 }

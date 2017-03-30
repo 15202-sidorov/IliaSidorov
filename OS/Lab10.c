@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <signal.h>
 
+//should add printEvn to the PATH variable
+
 #define CHILD_PROCESS_ID 0
 
 int Child_process(char **argv) {

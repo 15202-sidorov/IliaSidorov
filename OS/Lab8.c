@@ -7,13 +7,16 @@
 #define FILENAME "SomeFile.txt"
 
 int main(int argc, char **argv) {
-	int fd = open(FILENAME,O_RDONLY);
+	int fd = open(FILENAME,O_WRONLY);
 
-	struct flock f = { .l_type = FWRLCK,
+	struct flock f = { 
+					   .l_type = F_WRLCK,
 			   		   .l_whence = SEEK_SET,
 			   		   .l_start = 0,
 		   	  		   .l_len = 0,
-			   		   .l_pid = 
-			 }
+			   		   .l_pid = getpid()
+					 };
+	system("vim SomeFile.txt");
+	close(fd);
 	return 0;
 }
