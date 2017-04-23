@@ -16,6 +16,10 @@ int main(int argc, char **argv) {
 		   	  		   .l_len = 0,
 			   		   .l_pid = getpid()
 					 };
+	if (-1 == fcntl(fd,F_SETLKW,&f)) {
+		perror("Could not lock file");
+		return 1;
+	}
 	system("vim SomeFile.txt");
 	close(fd);
 	return 0;

@@ -49,6 +49,9 @@ int printInformation(char *filepath) {
 
     printf("%s ", str);
 
+    //getting i_nodes of file
+    printf("%d ",fileInfo.st_nlink);
+
     //get user info
 
     struct passwd *pwdinfo = getpwuid(fileInfo.st_uid);
@@ -61,9 +64,7 @@ int printInformation(char *filepath) {
     if (S_ISREG(fileInfo.st_mode)) {
     	printf("%.d ",fileInfo.st_size);
     }
-    else {
-    	printf("%.d ",4096); // ??? don't know what is that ???
-    }
+   
 
     //last modifiction 
 

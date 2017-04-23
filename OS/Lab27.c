@@ -15,7 +15,11 @@ int main(int argc, char **argv) {
 
 	//that is the stream we are going to pass information by to wc
 	FILE *output_stream = popen("wc -l","w");
-
+	if (NULL == output_stream) {
+		perror("could not create pipe");
+		return 2;
+	}
+	
 	char currentLine[CHUNCK_SIZE];
 	while (NULL != fgets(currentLine,CHUNCK_SIZE,input_file)) {
 		fputs(currentLine, output_stream);
