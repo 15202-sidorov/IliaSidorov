@@ -10,14 +10,20 @@ void writeProcess(int writefd) {
 	char toGoString[MAX_STRING_SIZE];
 	printf("Enter the line you'd like to pass : \n");
 	fgets(toGoString,sizeof(toGoString),stdin);
-	write(writefd,toGoString,MAX_STRING_SIZE);
+	if (-1 == write(writefd,toGoString,MAX_STRING_SIZE)){
+		perror("Could not write to stream");
+		return;
+	}
 	return;
 }
 
 void readProcess(int readfd) {
 	char recievedString[MAX_STRING_SIZE];
 	printf("Another process waits for the string to read\n");
-	read(readfd,recievedString,sizeof(recievedString));
+	if (-1 == read(readfd,recievedString,sizeof(recievedString))) {
+		perror("Could not read from stream\n");
+		return;
+	}
 	printf("Recieved successfuly\n");
 	printf("Upper case : ");
 	int i = 0;
@@ -44,6 +50,10 @@ int main() {
 	
 	//create two processes
 	pid_t child_pid = fork();
+	if (-1 == child_pid) {
+		perror("Could not create new process");
+		return 2;
+	}
 
 	if (0 == child_pid) {
 		writeProcess(fds[1]);

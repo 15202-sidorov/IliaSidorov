@@ -15,7 +15,6 @@ struct termios save_settings;
 void sig_handle(int sig) {
 
 	if (SIGQUIT == sig) {
-		
 		printf("Quit caught %d\n",sum);
 		tcsetattr(fileno(stdin),TCSANOW,&save_settings);
 		exit(0);
@@ -34,11 +33,12 @@ int main(int argc, char **argv) {
 	signal(SIGQUIT,sig_handle);
 	tcgetattr(fileno(stdin),&save_settings);
 	term_settings = save_settings;
-	term_settings.c_lflag &= ~ECHO;
+	term_settings.c_lflag &= ~(ECHO) | ISIG;
 	term_settings.c_cc[VINTR] = ASCII_DELETE;
 	tcsetattr(fileno(stdin),TCSANOW,&term_settings);
 	while (1) {
 		sleep(ITARATION_TIME);
 	}
+	tcsetattr(fileno(stdin),TCSANOW,&save_settings);
 	return 0;
 }

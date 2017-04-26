@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <wait.h>
 
 #define READ_PATH "readstream.out"
 #define MAX_STRING_SIZE 50
