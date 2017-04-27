@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#define CHUNCK_SIZE 1024
+#define CHUNCK_SIZE 64
 
 int main(int argc, char **argv) {
 	FILE *input_file = fopen(argv[1],"r");

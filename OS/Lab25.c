@@ -3,36 +3,39 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
-#define MAX_STRING_SIZE 50
+#define BUF_SIZE 64
 
 void writeProcess(int writefd) {
-	char toGoString[MAX_STRING_SIZE];
-	printf("Enter the line you'd like to pass : \n");
-	fgets(toGoString,sizeof(toGoString),stdin);
-	if (-1 == write(writefd,toGoString,MAX_STRING_SIZE)){
-		perror("Could not write to stream");
-		return;
+	char toGoChar[BUF_SIZE];
+	int returnVal = 1;
+	while (NULL != fgets(toGoChar,BUF_SIZE,stdin)) {
+		returnVal = write(writefd,toGoChar,BUF_SIZE);
+		if (-1 == returnVal) {
+			perror("Could not write to stream");
+			return;
+		}	
 	}
+
 	return;
 }
 
 void readProcess(int readfd) {
-	char recievedString[MAX_STRING_SIZE];
-	printf("Another process waits for the string to read\n");
-	if (-1 == read(readfd,recievedString,sizeof(recievedString))) {
-		perror("Could not read from stream\n");
-		return;
+	char recievedChar[BUF_SIZE];
+	int returnVal = 1;
+	while (0 != returnVal) {
+		returnVal = read(readfd,recievedChar,BUF_SIZE);
+		if (-1 == returnVal) {
+			perror("Could not read from stream\n");
+			return;
+		}
+		
+		for (int i = 0; i < strlen(recievedChar); i++) {
+			printf("%c",toupper(recievedChar[i]));
+		}
 	}
-	printf("Recieved successfuly\n");
-	printf("Upper case : ");
-	int i = 0;
-	while ((i < MAX_STRING_SIZE) && (recievedString[i] != '\n')) {
-		recievedString[i] = toupper(recievedString[i]);
-		printf("%c",recievedString[i]);
-		i++;
-	}
-	printf("\n");
+	
 	return;
 }
 
@@ -56,12 +59,15 @@ int main() {
 	}
 
 	if (0 == child_pid) {
+		close(fds[0]);
 		writeProcess(fds[1]);
+		close(fds[1]);
 	}
 	else {
+		close(fds[1]);
 		readProcess(fds[0]);
+		close(fds[0]);
 	}
-	
-	close(fds[0]);
-	close(fds[1]);
+
+	return 0;
 }
