@@ -1,0 +1,145 @@
+router
+switch
+NET - network adress translation
+Dhcp dynamic host ....
+wi-fi access point
+DNS
+
+Private IP, public IP
+
+таблица маршутизации ...
+
+Interface settings through console on router :
+ena
+conf
+inter
+interface g0/0.2
+encapsulation ?
+encapsulation dot1q ?
+encapsulation dot1q 2
+ip addre
+ip address ?
+ip address (ipaddress) (mask)
+exit
+and then set another interface
+
+=================================================================================================
+DHCP
+dynamic host config protocol
+конечное устройство посылает все запрос, есть ли DHCP сервер чтобы получить настройки
+DHCP server DHCO client
+client sends broadcast --- "DHCP discover"(MAC available only)
+DHCP server responds and sends back "DHCP offer"(broadcast too) -- all setting are there
+	settings :
+		-ip
+		-mask	 ( ???? )	
+		-gateway
+		-dns
+		... even OS
+
+DHCP server should give the device an IP address.
+So it has it has a pool of IPs available
+
+ -----------------------------------------------
+|ip	|mac	|status			|time	|
+|-------|-------|-----------------------|-------|
+|	|	|offer/active/expired/  |       |
+|	|	|static			|	|
+ -----------------------------------------------
+
+gets the mask from the network adress , gateway ...
+mac is inside packet
+if the device accepts the offer, it sends it back as "DHCP request" with offer inside it
+server recieves it and set the status to the note "active"
+then sends back "DHPC accept"
+if time is too big, then the address is deleted
+time is included in offer
+client should constantly send request so that the server knows it is still active
+in order to define whether the IP is available, DHCP server sends ARP request
+
+
+ena
+conf t
+service dhcp
+ip dhcp pool <name>
+network <ip> <mask> --> that is NETWORK ADDRESS!! not a router
+default-router <ip>
+--------------------------> now dhcp works on router
+
+164.254.0.0/16 --- means DHCP doesn't work
+ip autoconfiguration --- in case DHCP doesn't work
+f(MAC) = (16 bit)
+
+DHCP forwarding
+
+=================================================================================================
+Dynamic routing (Network level)
+
+Автономная система (есть административный контроль)
+	-- номер
+	-- адресное пространство(глобальные адреса)
+
+Протокол BGP (border gateway protocol) -- маршутизаторы могу проложить себе путь к какому-то адресному порстрантву(автономной системы)  с помощью этого протокола.
+
+Two classes of dynamic routing protocols : 
+	Exterior gateway protocol : BGP (снаружи автономной системы)
+	Interior gatway protocol : ... (there are few) RIP, EIGRP, OSPF (внутри автономной системы)
+
+
+
+RIP : next hop ( нужно на каждом маршутизаторе заполниь таблицу маршетизации )
+	причем в данном случаее это нужно сделать автоматически
+
+
+network  router		A sais it has 3 to all neighbours
+				A -> 3 (0)
+				B is A's neighbour
+				B -> 5(0), 3(1)(через A)
+				C -> 1,2(0), 3(2), 5(1) <-- chooses the least one
+3 ---- A
+5 ---- B
+1,2 ---- C
+4 ---- D
+
+длинна маршута --- метрика (или другая характеристика маршута)
+маршутизатор периодически посылает своим соседям информацию о путях до сетей, которые он знает 
+
+есть некоторые проблемы
+	A <- X -> B <--> C
+route poisoning
+
+preferencies : 
+	--- direct
+	--- static
+	--- BGP
+	--- ... Interior protocols ....
+
+
+=================================================================================================
+split horizon
+
+EIGRP
+можно отправлять всю таблицу или только изменение.
+рассылаются unicast
+
+Пакеты :
+
+	Hello packet -- узнает про своих соседей
+(multicast) -- группы маршутизаторов
+
+	Table -- запрашиваем всю таблицу соседа(unicast)
+
+	Update(unicast) -- сообщает соседям об обновлении
+
+обеспечение контроля доставки пакета
+delivery control
+
+
+метрика = f(
+	загруженность(%),
+	ширина канала(Mb/s),
+	время задержки(distance, обработки ,передачи)
+)
+* К1, .. , K5 -- коэфициенты (как влияют те или иные параметры)
+
+дистанционно векторный алгоритм
