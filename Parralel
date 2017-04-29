@@ -1,0 +1,14 @@
+New standard : ..
+s
+Matix N * N
+MPI_Vector_type (N,1, N , MPI_DOUBLE, &type1)
+MPI_Scatter
+
+MPI_Type_create_resized(type1, lower , extent ,typeb)
+
+
+1) need to read about verification
+2) test on claster 1-3 lab
+3) do 3rd lab
+
+
