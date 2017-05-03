@@ -3,19 +3,27 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <string.h>
 
-#define MAX_STRING_SIZE 50
+#define BUF_SIZE 64
 
 int main() {
-	printf("I'm recieving the line ...\n" );
-	char r[MAX_STRING_SIZE];
-	fgets(r,sizeof(r),stdin);
-	int i = 0;
-	while ('\n' != r[i]) {
-		r[i] = toupper(r[i]);
-		printf("%c",r[i]);
-		i++;
+	char recieveBuffer[BUF_SIZE];
+	int fd = fileno(stdin);
+	int returnVal = 0;
+	while (1) {
+		returnVal = read(fd,recieveBuffer,BUF_SIZE);
+		if (-1 == returnVal) {
+			perror("Could not read buffer");
+			return 1;
+		}
+		if (0 == returnVal) {
+			break;
+		}
+
+		for (int i = 0; i < strlen(recieveBuffer); i++) {
+			printf("%c",toupper(recieveBuffer[i]));
+		}
 	}
-	printf("\n");
 	return 0;
 }

@@ -8,31 +8,33 @@
 #define BUF_SIZE 64
 
 void writeProcess(int writefd) {
-	char toGoChar[BUF_SIZE];
+	char toGoBuffer[BUF_SIZE];
 	int returnVal = 1;
-	while (NULL != fgets(toGoChar,BUF_SIZE,stdin)) {
-		returnVal = write(writefd,toGoChar,BUF_SIZE);
+	while (NULL != fgets(toGoBuffer,BUF_SIZE,stdin)) {
+		returnVal = write(writefd,toGoBuffer,BUF_SIZE);
 		if (-1 == returnVal) {
 			perror("Could not write to stream");
 			return;
 		}	
 	}
-
 	return;
 }
 
 void readProcess(int readfd) {
-	char recievedChar[BUF_SIZE];
+	char recievedBuffer[BUF_SIZE];
 	int returnVal = 1;
-	while (0 != returnVal) {
-		returnVal = read(readfd,recievedChar,BUF_SIZE);
+	while (1) {
+		returnVal = read(readfd,recievedBuffer,BUF_SIZE);
 		if (-1 == returnVal) {
 			perror("Could not read from stream\n");
 			return;
 		}
+		if (0 == returnVal) {
+			return;
+		}
 		
-		for (int i = 0; i < strlen(recievedChar); i++) {
-			printf("%c",toupper(recievedChar[i]));
+		for (int i = 0; i < strlen(recievedBuffer); i++) {
+			printf("%c",toupper(recievedBuffer[i]));
 		}
 	}
 	

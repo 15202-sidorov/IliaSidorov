@@ -6,16 +6,18 @@
 #include <wait.h>
 
 #define READ_PATH "readstream.out"
-#define MAX_STRING_SIZE 50
+#define BUF_SIZE 64
 
 //should include READ_PATH in PATH variable before running
 
 void writeProcess(FILE *writeStream) {
-	char toGoString[MAX_STRING_SIZE];
-	printf("Enter the line you'd like to pass : \n");
-	fgets(toGoString,sizeof(toGoString),stdin);
-	toGoString[sizeof(toGoString) + 1] = '\0';
-	fprintf(writeStream,"%s",toGoString);
+	char toGoBuffer[BUF_SIZE];
+	while (NULL != fgets(toGoBuffer,BUF_SIZE,stdin)) {
+		if (-1 == write(fileno(writeStream),toGoBuffer,BUF_SIZE)) {
+			perror("Could not write to file");
+			return;
+		}
+	}
 	return;
 }
 

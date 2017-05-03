@@ -20,11 +20,19 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	struct msgbuf message_to_send = {1L,"hello there from process 1\n"};
-	if (-1 == msgsnd(msg_id,&message_to_send,MESSAGE_SIZE,IPC_NOWAIT)) {
-		perror("Could not send message");
-		return 1;
+	struct msgbuf message_to_send = { 1L, "" };
+	while (1) {
+		fgets(message_to_send.mtext,MESSAGE_SIZE,stdin);
+		if (-1 == msgsnd(msg_id,&message_to_send,MESSAGE_SIZE,MSG_NOERROR)) {
+			perror("Could not send message");
+			return 1;
+		}
+
+		if (message_to_send.mtext == "exit") {
+
+		}
+		printf("Message is added to the queue successfuly\n");
 	}
-	printf("Message is send successfuly\n");
+
 	return 0;
 }
