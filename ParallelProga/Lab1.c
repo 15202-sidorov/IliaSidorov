@@ -5,70 +5,15 @@
 #include <mpi.h>
 
 //main matrix's height and width
-#define MATRIX_HEIGHT(size_) size_ * 10
-#define MATRIX_WIDTH(size_) size_ * 10
+#define MATRIX_HEIGHT(size_) size_ * 3
+#define MATRIX_WIDTH(size_) size_ * 3
 #define EPS 0.00001
 #define TETTA 0.01
 
 //returns height of one matrix in one process
-#define PART_HEIGHT(size) MATRIX_HEIGHT(size) / (size)
+#define PART_HEIGHT(size_) MATRIX_HEIGHT(size_) / (size_)
 
-int size = 0;
-
-double *multiplyMatrix(double *m1, double *vector) {
-	double *result = (double *)malloc(PART_HEIGHT(size)*sizeof(double));
-	for (int i = 0; i < PART_HEIGHT(size); i++) {
-		for (int j = 0; j < MATRIX_WIDTH(size); j++) {
-			result[i] += m1[i * MATRIX_WIDTH(size) + j] * vector[j];
-		}
-	}
-	return result;
-}
-
-void printfMatrix(double *m1) {
-	for (int i = 0; i < MATRIX_HEIGHT(size); i++) {
-		printf("%lf\n",m1[i]);
-	}
-}
-
-double *MPI_MatrixMultiplication(double *m1, double *vector,int rank) {
-	double *result = multiplyMatrix(m1,vector);
-
-	return result;
-}
-
-double countNorm(const double *vector) {
-	double result = 0;
-	for (int i = 0; i < MATRIX_WIDTH(size); i++) {
-		result += (vector[i] * vector[i]);
-	}
-	result = sqrt(result);
-	return result;
-}
-
-double *substract(double *v1, double *v2) {
-	for(int i = 0; i < MATRIX_WIDTH(size); i++) {
-		v1[i] = v1[i] - v2[i];
-	}
-	return v1;
-}
-
-double *multDouble(double *v1, double k) {
-	for(int i =0; i < MATRIX_WIDTH(size); i++) {
-		v1[i] *= k;
-	}
-	return v1;
-}
-
-int main(int argc, char **argv) {
-	MPI_Init(&argc,&argv);
-	int rank;
-	MPI_Comm_size(MPI_COMM_WORLD,&size);
-	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-	
-//init matrix
-//общий случай
-	double *a = (double *)calloc(PART_HEIGHT(size) * MATRIX_WIDTH(size),sizeof(double));
+void init_Matrixes(double *a, double *b, int size, int rank) {
 	int rank_addition = rank * PART_HEIGHT(size);
 	for (int i = 0; i < PART_HEIGHT(size); i++) {
 		for (int j = 0; j < MATRIX_WIDTH(size); j++) {
@@ -80,21 +25,66 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	
-	double *b = (double *)calloc(MATRIX_WIDTH(size),sizeof(double));
+
 	for (int i = 0; i < MATRIX_WIDTH(size); i++) {
 		b[i] = MATRIX_HEIGHT(size) + 1;
 	}
 
-	double *x = (double *)calloc(MATRIX_WIDTH(size),sizeof(double));
+	return;
+}
+
+void printfMatrix(double *m1 , int size) {
+	for (int i = 0; i < MATRIX_HEIGHT(size); i++) {
+		printf("%lf\n",m1[i]);
+	}
+}
+
+double countNorm(const double *vector, int size) {
+	double result = 0;
+	for (int i = 0; i < MATRIX_WIDTH(size); i++) {
+		result += (vector[i] * vector[i]);
+	}
+	result = sqrt(result);
+	return result;
+}
+
+int main(int argc, char **argv) {
+	MPI_Init(&argc,&argv);
+	int rank;
+	int size;
+	MPI_Comm_size(MPI_COMM_WORLD,&size);
+	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+	
+	double a[PART_HEIGHT(size) * MATRIX_WIDTH(size)];
+	double b[MATRIX_WIDTH(size)];
+
+	init_Matrixes(a,b,size,rank);
+
+
+	double x[MATRIX_WIDTH(size)];
 
 	double result = 1;
-	double *big_vector = (double *)calloc(MATRIX_WIDTH(size),sizeof(double));
-	double *AxMult = NULL;
-	double *AxMinB = NULL;
+	double big_vector[MATRIX_WIDTH(size)];
+	double AxMult[PART_HEIGHT(size)];
+	double AxMinB[MATRIX_WIDTH(size)];
+
+	for (int i = 0; i < MATRIX_WIDTH(size); i++) {
+		x[i] = 4.0;
+		AxMinB[i] = 0.0;
+		if (i < PART_HEIGHT(size)) {
+			AxMult[i] = 0.0;
+		}
+	}
+
 	while ((EPS < result)) {
-		//printf("Process %d result : %f\n",rank,result);
-		AxMult = MPI_MatrixMultiplication(a,x,rank);
+		
+		for (int i = 0; i < PART_HEIGHT(size); i++) {
+			AxMult[i] = 0;
+			for (int j = 0; j < MATRIX_WIDTH(size); j++) {
+				AxMult[i] += a[i * MATRIX_WIDTH(size) + j] * x[j];
+			}
+		}
+	
 		MPI_Allgather( AxMult,
 					   PART_HEIGHT(size),
 					   MPI_DOUBLE,
@@ -102,18 +92,20 @@ int main(int argc, char **argv) {
 					   PART_HEIGHT(size),
 					   MPI_DOUBLE,
 					   MPI_COMM_WORLD );
-		AxMinB = substract(big_vector,b);
-		result = countNorm(AxMinB)/countNorm(b);		
 
-		substract(x,multDouble(AxMinB,TETTA));
+
+		for(int i = 0; i < MATRIX_WIDTH(size); i++) {
+			AxMinB[i] = big_vector[i] - b[i];
+			x[i] -= (TETTA * AxMinB[i]);
+		}
+		
+		result = countNorm(AxMinB, size) / countNorm(b, size);
+
 	}
 
-	if (rank == 1) printfMatrix(x);
+	MPI_Barrier(MPI_COMM_WORLD);
+	if (rank == 0) printfMatrix(x,size);
 	
-	free(a);
-	free(b);
-	free(x);
-	free(big_vector);
 	MPI_Finalize();
 	return 0;
 }

@@ -14,7 +14,6 @@
 
 double countNorm(const double *vector) {
 	double result = 0;
-#pragma omp parallel for reduction(+:result)
 	for (int i = 0; i < MATRIX_WIDTH; i++) {
 		result += (vector[i] * vector[i]);
 	}
@@ -52,13 +51,14 @@ int main() {
 	double result = 1;
 	double AxMinB[MATRIX_WIDTH];
 	double AxMult[MATRIX_WIDTH];
-	
+
+#pragma omp parallel 
+{	
 	while (result > EPS) {
 		for (int i = 0; i < MATRIX_WIDTH; i++) {
 			AxMult[i] = 0;
 		}
 
-#pragma omp parallel for 
 		for (int i = 0; i < MATRIX_HEIGHT; i++) {
 			for (int j = 0; j < MATRIX_WIDTH; j++) {
 				AxMult[i] += a[i*MATRIX_WIDTH + j]*x[j];
@@ -68,11 +68,11 @@ int main() {
 
 		result = countNorm(AxMinB)/countNorm(b);
 
-#pragma omp parallel for 
 		for (int j = 0; j < MATRIX_WIDTH; j++) {
 			x[j] -= AxMinB[j] * TETTA;
 		}
 	}
+}
 	printfMatrix(x);
 
 	return 0;
