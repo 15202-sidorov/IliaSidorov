@@ -16,6 +16,7 @@ struct msgbuf {
 };
 
 int main(int argc, char **argv) {
+	
 	msg_id = msgget(getuid(),0);
 	if (-1 == msg_id) {
 		perror("Could not access queue");
@@ -23,24 +24,22 @@ int main(int argc, char **argv) {
 	}
 
 	struct msgbuf message_to_recieve;
-	message_to_recieve.mtype = 1L;
+	int chars_read = 0;
 	while (1) {
-		if (-1 == msgrcv(msg_id,&message_to_recieve,MESSAGE_SIZE,1L,MSG_NOERROR)) {
+		//if OL , then first message is read
+		//if greater then 0, then first message with that type is recieved
+		chars_read = msgrcv(msg_id,&message_to_recieve,MESSAGE_SIZE,1L,MSG_NOERROR);
+		if (-1 == chars_read) {
 			perror("Could not recieve message");
-			msgctl(msg_id,IPC_RMID,NULL);
 			return 1;
 		}
+	
+		printf("Message : %sType: %ld\nChar Count: %d\n",
+			message_to_recieve.mtext,
+			message_to_recieve.mtype,
+			chars_read);
 		
-		if (message_to_recieve.mtype == 0L) {
-			break;
-		}
-
-		printf("Message recieved successfuly\n");
-		printf("Content : %s",message_to_recieve.mtext);
-		printf("Type : %ld\n",message_to_recieve.mtype);
 	} 
 	
-
-	msgctl(msg_id,IPC_RMID,NULL);
 	return 0;
 }

@@ -6,14 +6,14 @@
 
 #define CHILD_NUMBER 4
 #define RECIEVER_PATH "/home/ilia/IliaSidorov/OS/Lab31/reciever.out"
-#define CHUNCK_SIZE 64
-#define END_TYPE 2L
-#define COMMON_TYPE 1L
-#define FINAL_TYPE 3L
+#define MESSAGE_SIZE 64
+#define END_TYPE 3L
+#define COMMON_SEND 1L
+#define FINAL_TYPE 4L
 
 struct msgbuf {
 	long mtype;
-	char mtext[CHUNCK_SIZE];
+	char mtext[MESSAGE_SIZE];
 }
 
 int main (int argc, char **argv) {
@@ -33,46 +33,50 @@ int main (int argc, char **argv) {
 		if (0 == child_reciever_pid) {
 			//running reciever
 			if (-1 == execv(RECIEVER_PATH,argv)) {
-				perror("Chinld could not be exceuted")
+				perror("Child cannot be exceuted")
 				return 4;
 			}
 		}
 	}
 
-	char text[CHUNCK_SIZE] = {0};
+	char text[MESSAGE_SIZE] = {0};
 	struct msgbuf message = {0};
 
 	while (1) {
 		
-		fgets(text,CHUNCK_SIZE,stdin)
-		if (text == "EOF") {
+		fgets(text,MESSAGE_SIZE,stdin)
+		if (*text == EOF) {
+			message.mtext = "";
 			message.mtype = END_TYPE;
+			for (int i = 0; i < CHILD_NUMBER; i++) {
+				if (-1 == msgsnd(msgqid,&message,MESSAGE_SIZE,MSG_NOERROR)) {
+					perror("Could not send end message to process");
+					return 1;
+				}
+			}
+
+			for (int i = 0; i < CHILD_NUMBER; i++) {
+				if (-1 == msgrcv(msgqid,&message,MESSAGE_SIZE,FINAL_TYPE,MSG_NOERROR)) {
+					perror("Could not recieve final message");
+					return 2;
+				}
+			}
+			
+			printf("Connection closed, removing queue\n")
+			if (-1 == msgctl(msgqid,IPC_RMID,NULL)) {
+				perror("Could not delete queue");
+				return 3;
+			}
+			return 0;
 		}
 		else {
-			message.mtype = COMMON_TYPE;
-		}
-
-		message.mtext = text;
-		
-		for (int i = 0; i < CHILD_NUMBER; i++) {
-			if (-1 == msgsnd(msgqid,&message,CHUNCK_SIZE,NO_ERROR)) {
-				perror("Could not send message");
-				return 2;
-			}
-		}
-
-		if (END_TYPE == message.mtype) {
-			int counter = CHILD_NUMBER;
-			while (counter) {
-				if (-1 == msgrcv(msgqid,&message,CHUNCK_SIZE,-FINAL_TYPE,NO_ERROR)) {
-					perror("Parent could not get the final answer");
-					return 3;
-				}
-				else {
-					counter--;
+			message.mtype = COMMON_SEND;
+			for (int i = 0; i < CHILD_NUMBER; i++) {
+				if (-1 == msgsnd(msgqid,&message,MESSAGE_SIZE,MSG_NOERROR)) {
+					perror("Could not send common message");
+					return 5;
 				}
 			}
-			break;
 		}
 
 	}

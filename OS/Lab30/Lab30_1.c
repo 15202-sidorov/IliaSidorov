@@ -1,10 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/msg.h>
 #include <sys/ipc.h>
 #include <sys/types.h>
 #include <string.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define MESSAGE_SIZE 64
 
@@ -13,8 +15,19 @@ struct msgbuf {
 	char mtext[MESSAGE_SIZE];
 };
 
+int msg_id = 0;
+
+void quithandler(int sig) {
+	if (-1 == msgctl(msg_id,IPC_RMID,NULL)) {
+		perror("Could not delete queue");
+		exit(1);
+	}
+	exit(0);
+}
+
 int main(int argc, char **argv) {
-	int msg_id = msgget(getuid(),IPC_CREAT | 0666);
+	signal(SIGINT,quithandler);
+	msg_id = msgget(getuid(),IPC_CREAT | 0666);
 	if (-1 == msg_id) {
 		perror("Could not create message queue");
 		return 1;
@@ -28,10 +41,6 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 
-		if (message_to_send.mtext == "exit") {
-
-		}
-		printf("Message is added to the queue successfuly\n");
 	}
 
 	return 0;

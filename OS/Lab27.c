@@ -22,7 +22,9 @@ int main(int argc, char **argv) {
 	
 	char currentLine[CHUNCK_SIZE];
 	while (NULL != fgets(currentLine,CHUNCK_SIZE,input_file)) {
-		fputs(currentLine, output_stream);
+		if ('\n' == *currentLine) {
+			fputs(currentLine, output_stream);
+		}
 	}
 
 	pclose(output_stream);
