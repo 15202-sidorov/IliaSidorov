@@ -60,7 +60,6 @@ int main(int argc, char **argv) {
 
 	init_Matrixes(a,b,size,rank);
 
-
 	double x[MATRIX_WIDTH(size)];
 
 	double result = 1;

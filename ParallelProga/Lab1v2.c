@@ -49,7 +49,7 @@ double countNorm(const double *vector , int size) {
 	return result;
 }
 
-void MPI_MatrixMultiplication(double *result,double *m1, double *vector, int size, int rank) {
+void MPI_MatrixMultiplication(double *result, double *m1, double *vector, int size, int rank) {
 	for (int i = 0; i < PART_HEIGHT(size); i++) {
 		result[i] = 0;
 	}	
@@ -72,6 +72,7 @@ void MPI_MatrixMultiplication(double *result,double *m1, double *vector, int siz
 			123,
 			MPI_COMM_WORLD,
 			MPI_STATUS_IGNORE );
+		MPI_Barrier(MPI_COMM_WORLD);
 	}
 	
 	return;
@@ -125,7 +126,7 @@ int main(int argc, char **argv) {
 				MPI_COMM_WORLD);
 
 		result = countNorm(final_result,size) / b_norm;
-		for (int i = 0; i < MATRIX_WIDTH(size); i++) {
+		for (int i = 0; i < PART_HEIGHT(size); i++) {
 			x[i] -= TETTA * final_result[i];
 		}
 	}
