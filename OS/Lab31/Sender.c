@@ -1,53 +1,63 @@
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <ctype.h>
 #include <sys/msg.h>
 #include <sys/ipc.h>
+#include <sys/types.h>
+#include <string.h>
+#include <getopt.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define CHILD_NUMBER 4
-#define RECIEVER_PATH "/home/ilia/IliaSidorov/OS/Lab31/reciever.out"
 #define MESSAGE_SIZE 64
-#define END_TYPE 3L
 #define COMMON_SEND 1L
-#define FINAL_TYPE 4L
+
+#define SENDER_END_OF_COMMUTE -2L
+#define RECIEVER_END_OF_COMMUTE -3L
 
 struct msgbuf {
-	long mtype;
+	long int mtype;
 	char mtext[MESSAGE_SIZE];
+};
+
+int msgqid = 0;
+
+void quithandler(int sig) {
+	if (-1 == msgctl(msgqid,IPC_RMID,NULL)) {
+		perror("Could not delete queue");
+		exit(1);
+	}
+	exit(0);
 }
 
 int main (int argc, char **argv) {
 	//all pids of recievers
-
-	int msgqid =  msgget(getuid(),IPC_CREAT | 0666);
+	signal(SIGINT,quithandler);
+	msgqid =  msgget(getuid(),IPC_CREAT | 0666);
 	if (-1 == msgqid) {
 		perror("Could not create msg queue");
 		return 1;
 	}
 
-	pid_t child_pids[CHILD_NUMBER] = {0};
-	pid_t child_reciever_pid = 0;
-	for (int i = 0 ; i < CHILD_NUMBER; i++){
-		child_reciever_pid = fork();
-		child_pids[i] = child_reciever_pid;
-		if (0 == child_reciever_pid) {
-			//running reciever
-			if (-1 == execv(RECIEVER_PATH,argv)) {
-				perror("Child cannot be exceuted")
-				return 4;
-			}
-		}
-	}
-
-	char text[MESSAGE_SIZE] = {0};
 	struct msgbuf message = {0};
-
+	message.mtype = COMMON_SEND;
+	int readval = 0;
 	while (1) {
-		
-		fgets(text,MESSAGE_SIZE,stdin)
-		if (*text == EOF) {
-			message.mtext = "";
-			message.mtype = END_TYPE;
+		readval = read(fileno(stdin),message.mtext,MESSAGE_SIZE);
+		if (-1 == readval) {
+			perror("Seder could not read from stdin");
+			if (-1 == msgctl(msgqid,IPC_RMID,NULL)) {
+				perror("Could not delete queue");
+			}
+			return 1;
+		}
+
+		if (0 == readval) {
+			strcpy(message.mtext,"");
+			message.mtype = SENDER_END_OF_COMMUTE;
 			for (int i = 0; i < CHILD_NUMBER; i++) {
 				if (-1 == msgsnd(msgqid,&message,MESSAGE_SIZE,MSG_NOERROR)) {
 					perror("Could not send end message to process");
@@ -55,14 +65,15 @@ int main (int argc, char **argv) {
 				}
 			}
 
+			//waiting for all childs to send back end of communication 
 			for (int i = 0; i < CHILD_NUMBER; i++) {
-				if (-1 == msgrcv(msgqid,&message,MESSAGE_SIZE,FINAL_TYPE,MSG_NOERROR)) {
+				if (-1 == msgrcv(msgqid,&message,MESSAGE_SIZE,RECIEVER_END_OF_COMMUTE,MSG_NOERROR)) {
 					perror("Could not recieve final message");
 					return 2;
 				}
 			}
 			
-			printf("Connection closed, removing queue\n")
+			printf("Connection closed, removing queue\n");
 			if (-1 == msgctl(msgqid,IPC_RMID,NULL)) {
 				perror("Could not delete queue");
 				return 3;
@@ -70,8 +81,9 @@ int main (int argc, char **argv) {
 			return 0;
 		}
 		else {
-			message.mtype = COMMON_SEND;
+			//sending common message
 			for (int i = 0; i < CHILD_NUMBER; i++) {
+				message.mtype = COMMON_SEND + i;
 				if (-1 == msgsnd(msgqid,&message,MESSAGE_SIZE,MSG_NOERROR)) {
 					perror("Could not send common message");
 					return 5;
@@ -80,12 +92,6 @@ int main (int argc, char **argv) {
 		}
 
 	}
-
-
-
-
-
-
 
 	return 0;
 }
