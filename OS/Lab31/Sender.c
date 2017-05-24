@@ -11,12 +11,11 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define CHILD_NUMBER 4
+#define CHILD_NUMBER 2
 #define MESSAGE_SIZE 64
 #define COMMON_SEND 1L
 
-#define SENDER_END_OF_COMMUTE -2L
-#define RECIEVER_END_OF_COMMUTE -3L
+#define RECIEVER_END_OF_COMMUTE 7L
 
 struct msgbuf {
 	long int mtype;
@@ -48,7 +47,7 @@ int main (int argc, char **argv) {
 	while (1) {
 		readval = read(fileno(stdin),message.mtext,MESSAGE_SIZE);
 		if (-1 == readval) {
-			perror("Seder could not read from stdin");
+			perror("Sender could not read from stdin");
 			if (-1 == msgctl(msgqid,IPC_RMID,NULL)) {
 				perror("Could not delete queue");
 			}
@@ -56,9 +55,9 @@ int main (int argc, char **argv) {
 		}
 
 		if (0 == readval) {
-			strcpy(message.mtext,"");
-			message.mtype = SENDER_END_OF_COMMUTE;
+			message.mtext[0] = EOF;
 			for (int i = 0; i < CHILD_NUMBER; i++) {
+				message.mtype = COMMON_SEND + i;
 				if (-1 == msgsnd(msgqid,&message,MESSAGE_SIZE,MSG_NOERROR)) {
 					perror("Could not send end message to process");
 					return 1;
@@ -84,7 +83,7 @@ int main (int argc, char **argv) {
 			//sending common message
 			for (int i = 0; i < CHILD_NUMBER; i++) {
 				message.mtype = COMMON_SEND + i;
-				if (-1 == msgsnd(msgqid,&message,MESSAGE_SIZE,MSG_NOERROR)) {
+				if (-1 == msgsnd(msgqid,&message,readval,MSG_NOERROR)) {
 					perror("Could not send common message");
 					return 5;
 				}

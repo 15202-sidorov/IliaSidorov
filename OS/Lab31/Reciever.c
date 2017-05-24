@@ -11,8 +11,7 @@
 
 #define MESSAGE_SIZE 64
 
-#define SENDER_END_OF_COMMUTE -2L
-#define RECIEVER_END_OF_COMMUTE -3L
+#define RECIEVER_END_OF_COMMUTE 7L
 
 struct msgbuf {
 	long int mtype;
@@ -21,8 +20,8 @@ struct msgbuf {
 
 int main (int argc, char **argv) {
 	printf("I'm ON it\n");
-	long int COMMON_SEND = (long) (*argv[1] - '0');
-
+	long COMMON_SEND = (long)(*argv[1] - '0');
+	printf("hey there\n");
 	int msg_id = msgget(getuid(),0);
 	if (-1 == msg_id) {
 		perror("Child could not get msg queue");
@@ -33,13 +32,13 @@ int main (int argc, char **argv) {
 	int chars_read = 0;
 	while (1) {
 		chars_read = msgrcv(msg_id,&message,MESSAGE_SIZE,COMMON_SEND,MSG_NOERROR);
-
 		if (-1 == chars_read) {
 			perror("Could not recieve message");
 			return 1;
 		}
 		
-		if (SENDER_END_OF_COMMUTE == message.mtype) {
+		if (EOF == message.mtext[0]) {
+			printf("End of communication is caught\n");
 			message.mtype = RECIEVER_END_OF_COMMUTE;
 			if (-1 == msgsnd(msg_id,&message,MESSAGE_SIZE,MSG_NOERROR)) {
 				perror("Could not send final message");
@@ -54,5 +53,6 @@ int main (int argc, char **argv) {
 			}
 		}
 	}
+	return 0;
 	
 }
