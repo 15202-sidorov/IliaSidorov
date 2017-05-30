@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	shmid = shmget(getuid(),SHM_SIZE, IPC_CREAT | 0666);
+	shmid = shmget(getuid(), SHM_SIZE, IPC_CREAT | 0666);
 	if (-1 == shmid) {
 		perror("Could not create shared segment");
 		return 2;
@@ -48,14 +48,16 @@ int main(int argc, char **argv) {
 
 	message = (char *)shmat(shmid,0,0);
 
-	for (int i = 0; i < MESSAGE_COUNT; i++) {
+	while(1) {
 		if (-1 == semop(semid,&inprocess,1)) {
 			perror("Could not set inprocess semaphore");
 			return 3;
 		}
-		printf("Produsing message\n");
-		sprintf(message,"message #%d is produced\n",i);
-
+		
+		if (NULL == fgets(message,SHM_SIZE,stdin)) {
+			perror("Could not read string");
+			return 5;
+		}
 		if (-1 == semop(semid,&produced,1)) {
 			perror("Could not set produced semaphore");
 			return 4;
@@ -65,5 +67,4 @@ int main(int argc, char **argv) {
 	shmdt(message);
 	semctl(semid, 0, IPC_RMID, 0);
 	shmctl(shmid, IPC_RMID, 0);
-
 }
