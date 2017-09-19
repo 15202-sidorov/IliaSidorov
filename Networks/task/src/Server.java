@@ -4,64 +4,154 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
-import java.util.Timer;
-import java.util.TimerTask;
+
+class ClientHandler extends Thread {
+    ClientHandler( SocketChannel channel ) throws IOException {
+        clientSocket = channel;
+        mesSender = new MessageSender(channel);
+        buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
+    }
+
+    ClientHandler ( SocketChannel channel, MessageSender mes ) {
+        clientSocket = channel;
+        mesSender = mes;
+        buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
+    }
+
+    public void run() {
+        try {
+            if ( !receiveFileName() ) {
+                clientSocket.close();
+                return;
+            }
+
+            if ( !receiveFileSize() ) {
+                clientSocket.close();
+                return;
+            }
+
+            receiveFile();
+        }
+        catch ( IOException ex ) {
+            System.out.println();
+        }
+        finally {
+            try {
+                clientSocket.close();
+            }
+            catch ( IOException ex ) {
+                System.out.println("Could not close client socket");
+            }
+        }
+
+    }
+
+    private boolean receiveFileName() throws IOException {
+        mesSender.receiveBuffer(buffer);
+        fileName = Charset.forName("UTF-8").decode(buffer).toString();
+        if ( checkFileName(fileName) ) {
+            mesSender.sendMessage(Message.SUCCESS);
+            return true;
+        }
+        else {
+            mesSender.sendMessage(Message.FAIL);
+            return false;
+        }
+    }
+
+    private boolean receiveFileSize() throws IOException {
+        mesSender.receiveBuffer(buffer);
+        fileSize = buffer.getInt();
+        if (fileSize > MAX_FILE_SIZE) {
+            mesSender.sendMessage(Message.FAIL);
+            return false;
+        }
+        else {
+            mesSender.sendMessage(Message.SUCCESS);
+            return true;
+        }
+    }
+
+    private void receiveFile() throws IOException {
+        File receivedFile = new File(FILE_PATH + fileName);
+        FileOutputStream outputStream = new FileOutputStream(receivedFile);
+        while (bytesRead < fileSize) {
+            mesSender.receiveBuffer(buffer);
+            outputStream.write(buffer.get());
+            bytesRead += BUFFER_CAPACITY;
+        }
+
+        mesSender.sendMessage(Message.SUCCESS);
+    }
+
+    private boolean checkFileName( String name ) {
+        return true;
+    }
+
+    private SocketChannel clientSocket = null;
+    private int bytesRead = 0;
+    private ByteBuffer buffer = null;
+    private MessageSender mesSender = null;
+    private String fileName = null;
+    private int fileSize = 0;
+    private static final String FILE_PATH = "D:\\IliaSidorov\\Networks\\src\\uploads";
+    private static final int MAX_FILE_SIZE = 1024;
+    private static final int BUFFER_CAPACITY = 64;
+}
 
 class ReceiveThread extends Thread {
     ReceiveThread( int input_port ) {
+        createDirectory();
         PORT_NUMBER = input_port;
     }
 
     @Override
     public void run() {
         try {
-            connectToClient();
-            buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
-            /*createDirectory();
-            receiveFileName();
-            receiveFileSize();
-            receiveFile();*/
+            initServerSocket();
+            //createDirectory();
             System.out.println("Server is ready to receive messages");
             System.out.println("Address : " + channel.socket().getInetAddress() );
             System.out.println("Port : " + PORT_NUMBER);
 
-            receivedChannel = channel.accept();
-            receivedChannel.read(buffer);
-            buffer.flip();
-            System.out.println(MAIN_CHARSET.decode(buffer).toString());
-            System.out.println("Successful receive, closing connection");
+            String message = null;
+            //while ( !this.isInterrupted() ) {
+                System.out.println("Waiting for client...");
+                SocketChannel receivedChannel = channel.accept();
+                MessageSender mesSender = new MessageSender(receivedChannel);
+                message = mesSender.receiveMessage();
+                /*if ( message.equals(Message.CONNECT) ) {
+                    mesSender.sendMessage(Message.SUCCESS);
+                    new ClientHandler( receivedChannel, mesSender ).start();
+                }*/
+                System.out.println(message);
+                System.out.println("New client is connected");
+            //}
+
         }
         catch ( IOException ex ) {
             System.out.println("Exception caught");
-            System.out.println("Sending failure");
-            try {
-                sendFailure();
-            }
-            catch (IOException ex1) {
-                System.out.println("Could not send final failure message");
-            }
+            System.out.println("Main thread terminating");
         }
         finally {
             try {
                 channel.close();
-                receivedChannel.close();
             }
             catch ( IOException ex1 ) {
-
+                System.out.println("Could not close Server socket");
             }
         }
 
     }
 
-    private void connectToClient() throws IOException {
+    private void initServerSocket() throws IOException {
         InetSocketAddress address = new InetSocketAddress(InetAddress.getLocalHost().getHostAddress(),PORT_NUMBER);
         channel = ServerSocketChannel.open();
         channel.bind(address);
-
     }
 
     private void createDirectory() {
-        File directory = new File(FILE_PATH);
+        File directory = new File(DIRECTORY_PATH);
         if ( !directory.exists() ) {
             if ( directory.mkdir() ) {
                 System.out.println("Directory is created");
@@ -75,112 +165,11 @@ class ReceiveThread extends Thread {
         }
     }
 
-    private void receiveFileName() throws IOException {
-        buffer.clear();
-        receivedChannel.read(buffer);
-        buffer.flip();
-        fileName = MAIN_CHARSET.decode(buffer).toString();
-        System.out.println("File name received : " + fileName );
-        if ( !checkFileName(fileName) ) {
-            System.out.println("Invalid filename");
-            sendFailure();
-        }
-        else {
-            System.out.println("File name is correct sending approve message");
-            sendSuccess();
-        }
-    }
-
-    private boolean checkFileName( String fileName ) {
-        return true;
-    }
-
-    private void receiveFileSize() throws IOException {
-        buffer.clear();
-        receivedChannel.read(buffer);
-        buffer.flip();
-        fileSize = buffer.getInt();
-        if ( !checkFileSize(fileSize) ) {
-            System.out.println("File size exeeds limit");
-            sendFailure();
-        }
-        else {
-            System.out.println("File size is all right");
-            mainFile = new File(FILE_PATH + "\\" + fileName);
-            System.out.println("File is created successfully");
-            sendSuccess();
-        }
-    }
-
-    private void receiveFile() throws IOException {
-        buffer.clear();
-
-        FileOutputStream outputStream = new FileOutputStream(mainFile);
-        Timer speedTimer = new Timer();
-        speedTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                counter++;
-                current_speed = (bytesRead - bytesReadBefore)/SPEED_CHECKOUT_TIME;
-                bytesReadBefore = bytesRead;
-                average_speed += ((average_speed * (counter - 1)) + current_speed)/counter;
-                System.out.println("Current speed : " + current_speed);
-                System.out.println("Average speed : " + average_speed);
-            }
-
-            private int counter = 0;
-        },SPEED_CHECKOUT_TIME, SPEED_CHECKOUT_TIME);
-
-        while ( bytesRead < fileSize ) {
-            receivedChannel.read(buffer);
-            outputStream.write(buffer.array());
-            bytesRead += buffer.capacity();
-            buffer.clear();
-        }
-
-        sendSuccess();
-    }
-
-    private void sendFailure() throws IOException {
-        buffer.clear();
-        buffer.put(MAIN_CHARSET.encode(FAIL_MESSAGE));
-        receivedChannel.write(buffer);
-        buffer.clear();
-    }
-
-    private void sendSuccess() throws IOException {
-        buffer.clear();
-        buffer.put(MAIN_CHARSET.encode(SUCCESS_MESSAGE));
-        receivedChannel.write(buffer);
-        buffer.clear();
-    }
-
-    private boolean checkFileSize( int fileSize ) {
-        return (MAX_FILE_SIZE > fileSize);
-    }
-
-    private File mainFile;
-    private String fileName;
-    private int fileSize;
-    private ServerSocket mainSocket;
     private ServerSocketChannel channel;
-    private SocketChannel receivedChannel;
-    private ByteBuffer buffer;
     private int PORT_NUMBER;
-    private int bytesRead = 0;
-    private int bytesReadBefore = 0;
 
-    private double current_speed = 0;
+    private static final String DIRECTORY_PATH = "D:\\IliaSidorov\\Networks\\src\\uploads";
 
-    private static double average_speed = 0;
-
-    private static final int SPEED_CHECKOUT_TIME = 3000;
-    private static final Charset MAIN_CHARSET = Charset.forName("UTF-8");
-    private static final int BUFFER_CAPACITY = 64;
-    private static final int MAX_FILE_SIZE = 1024;
-    private static final String SUCCESS_MESSAGE = "SUCCESS";
-    private static final String FAIL_MESSAGE = "FAILURE";
-    private static final String FILE_PATH = "D:\\IliaSidorov\\Networks\\src\\uploads";
 }
 
 

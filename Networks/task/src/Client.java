@@ -1,7 +1,8 @@
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -15,6 +16,7 @@ import java.nio.charset.Charset;
 class SendingThread extends Thread {
     SendingThread( String[] args ) {
         filePath = args[0];
+        buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
         try {
             serverAddress = new InetSocketAddress(InetAddress.getByName(args[1]), Integer.parseInt(args[2]));
         }
@@ -27,9 +29,40 @@ class SendingThread extends Thread {
     public void run() {
         try {
             channel = SocketChannel.open(serverAddress);
-            buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
-            sendSuccess();
-            System.out.println("Message is send, closing connection");
+            MessageSender sender = new MessageSender(channel);
+            sender.sendMessage(Message.CONNECT);
+            if ( sender.receiveMessage().equals(Message.FAIL) ) {
+                return;
+            }
+            sender.sendBuffer(MAIN_CHARSET.encode(filePath));
+
+            if ( sender.receiveMessage().equals(Message.FAIL) ) {
+                return;
+            }
+
+            buffer.putInt(fileSize);
+            sender.sendBuffer(buffer);
+
+            if ( sender.receiveMessage().equals(Message.FAIL) ) {
+                return;
+            }
+
+            File outputFile = new File(filePath);
+            FileInputStream inputStream = new FileInputStream(outputFile);
+            int bytesSend = 0;
+            while ( bytesSend < fileSize ) {
+                byte[] data = new byte[BUFFER_CAPACITY];
+                if (-1 == inputStream.read(data)) {
+                    break;
+                }
+                buffer.put(data);
+                sender.sendBuffer(buffer);
+            }
+
+            if ( sender.receiveMessage().equals(Message.SUCCESS)) {
+                System.out.println("File is send successfully");
+            }
+
 
         }
         catch ( IOException ex ) {
@@ -45,21 +78,6 @@ class SendingThread extends Thread {
             }
 
         }
-    }
-
-    private void sendFailure() throws IOException {
-        buffer.clear();
-        buffer.put(MAIN_CHARSET.encode(FAIL_MESSAGE));
-        channel.write(buffer);
-        buffer.clear();
-    }
-
-    private void sendSuccess() throws IOException {
-        buffer.clear();
-        buffer.put(MAIN_CHARSET.encode(SUCCESS_MESSAGE));
-        buffer.flip();
-        channel.write(buffer);
-        buffer.clear();
     }
 
     private String filePath;
