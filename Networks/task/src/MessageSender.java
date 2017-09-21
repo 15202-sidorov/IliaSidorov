@@ -11,6 +11,7 @@ public class MessageSender {
     }
 
     void sendMessage(String message) throws IOException {
+        System.out.println("Send message");
         messageBuffer.clear();
         messageBuffer.put(MAIN_CHARSET.encode(message));
         messageBuffer.flip();
@@ -21,20 +22,21 @@ public class MessageSender {
         messageBuffer.clear();
         clientSocket.read(messageBuffer);
         messageBuffer.flip();
-        return MAIN_CHARSET.decode(messageBuffer).toString();
+        String returnString = MAIN_CHARSET.decode(messageBuffer).toString();
+        messageBuffer.clear();
+        return returnString;
     }
 
     void sendBuffer( ByteBuffer buffer ) throws IOException {
-        buffer.flip();
+        buffer.rewind();
         clientSocket.write(buffer);
-        buffer.flip();
         buffer.clear();
     }
 
-    void receiveBuffer( ByteBuffer buffer ) throws IOException {
-        buffer.clear();
-        clientSocket.read(buffer);
-        buffer.flip();
+    ByteBuffer receiveBuffer() throws IOException {
+        messageBuffer.clear();
+        clientSocket.read(messageBuffer);
+        return messageBuffer;
     }
 
     private SocketChannel clientSocket;
