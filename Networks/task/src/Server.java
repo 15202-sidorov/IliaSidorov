@@ -1,17 +1,18 @@
-import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.Charset;
+
 
 class ClientHandler extends Thread {
     ClientHandler( SocketChannel channel ) throws IOException {
         clientSocket = channel;
+        inputStream = new DataInputStream(clientSocket.socket().getInputStream());
         mesSender = new MessageSender(channel);
         buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
+        outputStream = null;
     }
 
     ClientHandler ( SocketChannel channel, MessageSender mes ) throws IOException {
@@ -19,6 +20,7 @@ class ClientHandler extends Thread {
         inputStream = new DataInputStream(clientSocket.socket().getInputStream());
         mesSender = mes;
         buffer = ByteBuffer.allocate(BUFFER_CAPACITY);
+        outputStream = null;
     }
 
     public void run() {
@@ -47,16 +49,22 @@ class ClientHandler extends Thread {
             }
             catch ( IOException ex1 ) {
                 System.out.println("Could not send fail message");
+
+            }
+            if ( receivedFile.exists() ) {
+                if ( receivedFile.delete() ) {
+                    System.out.println("File is deleted");
+                }
             }
         }
         finally {
             try {
-                outputStream.close();
                 inputStream.close();
                 clientSocket.close();
+                outputStream.close();
                 System.out.println("Everything is all right, terminating successfully");
             }
-            catch ( IOException ex ) {
+            catch ( Exception ex ) {
                 System.out.println("Could not close client socket");
             }
         }
@@ -64,23 +72,14 @@ class ClientHandler extends Thread {
 
     private boolean receiveFileName() throws IOException {
         System.out.println("Receiving file name...");
-        buffer = mesSender.receiveBuffer();
+        String fileNameReceived = mesSender.receiveMessage();
         buffer.rewind();
-        fileName = Charset.forName("UTF-8").decode(buffer).toString();
+        fileName = fileNameReceived.substring(fileNameReceived.lastIndexOf("\\") + 1);
         buffer.clear();
         System.out.println("File name is : " + fileName);
-        if ( checkFileName(fileName) ) {
-            System.out.println("File name is receeived successfully");
-            System.out.println("Sending confirmation request");
-            mesSender.sendMessage(Message.SUCCESS);
-            return true;
-        }
-        else {
-            System.out.println("File name is not correct");
-            System.out.println("Sending fail");
-            mesSender.sendMessage(Message.FAIL);
-            return false;
-        }
+        System.out.println("Sending confirmation request");
+        mesSender.sendMessage(Message.SUCCESS);
+        return true;
     }
 
     private boolean receiveFileSize() throws IOException {
@@ -100,10 +99,9 @@ class ClientHandler extends Thread {
     }
 
     private void receiveFile() throws IOException {
-        System.out.println("Receiving file...");
-        fileName = "SomeFileYo.txt";
-        System.out.println(FILE_PATH + "\\" + fileName);
-        File receivedFile = new File(FILE_PATH + "\\" + fileName);
+        System.out.println("Receiving file " + fileName +  "...");
+        receivedFile = new File(FILE_PATH + fileName);
+
         if ( !receivedFile.createNewFile() ) {
             System.out.println("File already exists, rewriting...");
         }
@@ -120,13 +118,8 @@ class ClientHandler extends Thread {
             buffer.clear();
             bytesRead += BUFFER_CAPACITY;
         }
-        outputStream.close();
         mesSender.sendMessage(Message.SUCCESS);
         System.out.println("File received successfully");
-    }
-
-    private boolean checkFileName( String name ) {
-        return true;
     }
 
     private SocketChannel clientSocket = null;
@@ -137,14 +130,17 @@ class ClientHandler extends Thread {
     private MessageSender mesSender = null;
     private String fileName = null;
     private long fileSize = 0;
-    private static final String FILE_PATH = "D:\\IliaSidorov\\Networks\\task\\src\\uploads";
+    private File receivedFile = null;
+    private static final String FILE_PATH = "D:\\IliaSidorov\\Networks\\task\\src\\uploads\\";
     private static final long MAX_FILE_SIZE = 16000;
     private static final int BUFFER_CAPACITY = 64;
 }
 
 class ReceiveThread extends Thread {
     ReceiveThread( int input_port ) {
-        createDirectory();
+        if ( !createDirectory() ) {
+            return;
+        }
         PORT_NUMBER = input_port;
     }
 
@@ -152,7 +148,6 @@ class ReceiveThread extends Thread {
     public void run() {
         try {
             initServerSocket();
-            createDirectory();
             System.out.println("Server is ready to receive messages");
             System.out.println("Address : " + channel.socket().getInetAddress() );
             System.out.println("Port : " + PORT_NUMBER);
@@ -163,12 +158,16 @@ class ReceiveThread extends Thread {
                 SocketChannel receivedChannel = channel.accept();
                 MessageSender mesSender = new MessageSender(receivedChannel);
                 message = mesSender.receiveMessage();
+
                 if ( message.equals(Message.CONNECT) ) {
                     mesSender.sendMessage(Message.SUCCESS);
                     new ClientHandler( receivedChannel, mesSender ).start();
+                    System.out.println("New client is connected");
                 }
-                System.out.println(message);
-                System.out.println("New client is connected");
+                else {
+                    System.out.println("Could not connect to client");
+                }
+                System.out.println("Received message : " + message);
             }
 
         }
@@ -193,18 +192,21 @@ class ReceiveThread extends Thread {
         channel.bind(address);
     }
 
-    private void createDirectory() {
+    private boolean createDirectory() {
         File directory = new File(DIRECTORY_PATH);
         if ( !directory.exists() ) {
             if ( directory.mkdir() ) {
                 System.out.println("Directory is created");
+                return true;
             }
             else {
                 System.out.println("Could not create directory");
+                return false;
             }
         }
         else {
             System.out.println("Directory already exists");
+            return true;
         }
     }
 

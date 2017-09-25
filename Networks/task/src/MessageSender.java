@@ -11,7 +11,6 @@ public class MessageSender {
     }
 
     void sendMessage(String message) throws IOException {
-        System.out.println("Send message");
         messageBuffer.clear();
         messageBuffer.put(MAIN_CHARSET.encode(message));
         messageBuffer.flip();

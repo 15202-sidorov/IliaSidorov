@@ -68,7 +68,7 @@ class SendingThread extends Thread {
 
     private boolean sendFileName() throws IOException {
         System.out.println("Sending file path...");
-        sender.sendBuffer(MAIN_CHARSET.encode(filePath));
+        sender.sendMessage(filePath);
 
         if ( sender.receiveMessage().equals(Message.FAIL) ) {
             System.out.println("Could not send file path");
