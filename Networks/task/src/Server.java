@@ -4,7 +4,11 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Timer;
+import java.util.TimerTask;
 
+//check if file exists
+//bytes read and so forth
 
 class ClientHandler extends Thread {
     ClientHandler( SocketChannel channel ) throws IOException {
@@ -25,17 +29,24 @@ class ClientHandler extends Thread {
 
     public void run() {
         try {
+            speedTimer = new Timer();
+            speedTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    System.out.println("Bytes per second : " + (bytesRead - prevBytes));
+                    System.out.println("Average speed : " + (AVERAGE_SPEED * SECONDS_PASSED + (bytesRead - prevBytes))/(SECONDS_PASSED + 3));
+                    SECONDS_PASSED += 3;
+                    prevBytes = bytesRead;
+                }
+            },3000, 3000);
+
             if ( !receiveFileName() ) {
-                inputStream.close();
-                clientSocket.close();
                 System.out.println("Could not receive file name");
 
                 return;
             }
 
             if ( !receiveFileSize() ) {
-                inputStream.close();
-                clientSocket.close();
                 System.out.println("Could not receive file size");
                 return;
             }
@@ -59,13 +70,15 @@ class ClientHandler extends Thread {
         }
         finally {
             try {
-                inputStream.close();
+                speedTimer.cancel();
                 clientSocket.close();
+                inputStream.close();
                 outputStream.close();
+
                 System.out.println("Everything is all right, terminating successfully");
             }
             catch ( Exception ex ) {
-                System.out.println("Could not close client socket");
+                System.out.println("Some streams are not closed or don't exist");
             }
         }
     }
@@ -75,6 +88,10 @@ class ClientHandler extends Thread {
         String fileNameReceived = mesSender.receiveMessage();
         buffer.rewind();
         fileName = fileNameReceived.substring(fileNameReceived.lastIndexOf("\\") + 1);
+        if ( new File(FILE_PATH + fileName).exists() ) {
+            mesSender.sendMessage(Message.FAIL);
+            return false;
+        }
         buffer.clear();
         System.out.println("File name is : " + fileName);
         System.out.println("Sending confirmation request");
@@ -114,26 +131,30 @@ class ClientHandler extends Thread {
             buffer = mesSender.receiveBuffer();
             buffer.rewind();
             buffer.get(data);
-            outputStream.write(data);
+            outputStream.write(data, 0, buffer.position());
+            bytesRead += buffer.position();
             buffer.clear();
-            bytesRead += BUFFER_CAPACITY;
         }
         mesSender.sendMessage(Message.SUCCESS);
         System.out.println("File received successfully");
     }
 
+    private Timer speedTimer;
     private SocketChannel clientSocket = null;
     private DataInputStream inputStream = null;
     private FileOutputStream outputStream = null;
     private int bytesRead = 0;
+    private int prevBytes = 0;
     private ByteBuffer buffer = null;
     private MessageSender mesSender = null;
     private String fileName = null;
     private long fileSize = 0;
     private File receivedFile = null;
     private static final String FILE_PATH = "D:\\IliaSidorov\\Networks\\task\\src\\uploads\\";
-    private static final long MAX_FILE_SIZE = 16000;
+    private static final long MAX_FILE_SIZE = 1073741824;
     private static final int BUFFER_CAPACITY = 64;
+    private int AVERAGE_SPEED = 0;
+    private long SECONDS_PASSED = 0;
 }
 
 class ReceiveThread extends Thread {
@@ -222,7 +243,7 @@ public class Server {
         ReceiveThread thread = new ReceiveThread(Integer.parseInt(args[0]));
         thread.start();
 
-       try {
+        try {
             thread.join();
         }
         catch ( InterruptedException ex ) {

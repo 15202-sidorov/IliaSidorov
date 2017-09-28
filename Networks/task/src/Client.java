@@ -71,7 +71,7 @@ class SendingThread extends Thread {
         sender.sendMessage(filePath);
 
         if ( sender.receiveMessage().equals(Message.FAIL) ) {
-            System.out.println("Could not send file path");
+            System.out.println("File with such name already exitst on server");
             return false;
         }
         System.out.println("File path is send successfully");
@@ -99,14 +99,16 @@ class SendingThread extends Thread {
         while ( bytesSend < fileSize ) {
 
             byte[] data = new byte[BUFFER_CAPACITY];
-            if (-1 == inputStream.read(data)) {
+            int bytesRead = 0;
+            bytesRead = inputStream.read(data);
+            if (-1 == bytesRead) {
                 System.out.println("Could not read bytes");
-                break;
+                throw new IOException();
             }
 
-            buffer.put(data);
+            buffer.put(data, 0 , bytesRead);
             sender.sendBuffer(buffer);
-            bytesSend += BUFFER_CAPACITY;
+            bytesSend += bytesRead;
             System.out.println(bytesSend);
         }
 
@@ -130,8 +132,6 @@ class SendingThread extends Thread {
     private MessageSender sender = null;
 
     private static final int BUFFER_CAPACITY = 64;
-    private static final Charset MAIN_CHARSET = Charset.forName("UTF-8");
-
 
 }
 
