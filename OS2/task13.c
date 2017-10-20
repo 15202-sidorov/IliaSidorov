@@ -4,11 +4,13 @@
 #include <pthread.h>
 #include <unistd.h>
 
+
 #define LINES_AMOUNT 10
 
 pthread_mutex_t mutex;
 pthread_mutex_t mutex2;
-pthread_mutex_t mutex3;
+pthread_cond_t condition;
+pthread_cond_t condition2;
 
 //should check out so called not deadblocking type of mutexes
 //also atributes and so forth about mutexes
@@ -21,13 +23,21 @@ pthread_mutex_t mutex3;
 void *new_start_routine( void * arg ) {
 
 	for (int i = 0; i < LINES_AMOUNT; i++) {
+		if (i == LINES_AMOUNT - 1) {
+			printf("New routine printf\n");
+		    fflush(stdout);
+		    pthread_mutex_unlock(&mutex2);
+		    pthread_cond_signal(&condition);
+		    break;
+		}
 		pthread_mutex_lock(&mutex);
-		pthread_mutex_lock(&mutex3);
+		pthread_mutex_unlock(&mutex2);
 		printf("New routine printf\n");
 		fflush(stdout);
+		pthread_mutex_unlock(&mutex);
 		pthread_mutex_lock(&mutex2);
-		pthread_mutex_unlock(&mutex3);
-	
+		pthread_cond_signal(&condition);
+		pthread_cond_wait(&condition2,&mutex2);
 	}
 
 	return 0;
@@ -59,28 +69,37 @@ int main( int argc, char **argv ) {
 		return 1;
 	}
 
-	if (0 != pthread_mutex_init(&mutex3,&mutex_attr)) {
-		perror("Could not create mutex\n");
+	if (0 != pthread_cond_init(&condition, NULL)) {
+		perror("Could not create condition for mutex\n");
 		return 1;
 	}
 
-	pthread_mutex_lock(&mutex);
+	if (0 != pthread_cond_init(&condition2, NULL)) {
+		perror("Could not create condition for mutex\n");
+		return 1;
+	}
+
 	if (0 != pthread_create(&thread, NULL, new_start_routine, NULL)) {
 		perror("Could not create routine\n");
 		return 1;
 	}
-
+	pthread_mutex_lock(&mutex2);
 	for (int i = 0; i < LINES_AMOUNT; i++) {
-		pthread_mutex_lock(&mutex2);
+		if (i == LINES_AMOUNT - 1) {
+			printf("New routine printf\n");
+		    fflush(stdout);
+		    pthread_mutex_unlock(&mutex2);
+		   	pthread_cond_signal(&condition2);
+		    break;
+		}
+		pthread_mutex_lock(&mutex);
+		pthread_mutex_unlock(&mutex2);
 		printf("Parent routine printf\n");
 		fflush(stdout);
-		if (i == 0) {
-			pthread_mutex_unlock(&mutex);
-			sleep(1);
-		}
-
-		pthread_mutex_lock(&mutex3);
-		pthread_mutex_unlock(&mutex2);
+		pthread_mutex_unlock(&mutex);
+		pthread_mutex_lock(&mutex2);
+		pthread_cond_signal(&condition2);
+		pthread_cond_wait(&condition,&mutex2);
 	}
 
 	if (0 != pthread_join(thread,NULL)) {
@@ -88,17 +107,24 @@ int main( int argc, char **argv ) {
 		return 1;
 	}
 
+
+	if (0 != pthread_cond_destroy(&condition)) {
+		perror("Could not destroy condition for mutex\n");
+		return 1;
+	}
+
+	if (0 != pthread_cond_destroy(&condition2)) {
+		perror("Could not create condition for mutex\n");
+		return 1;
+	}
+
+
 	if (0 != pthread_mutex_destroy(&mutex)) {
 		perror("Could not destroy mutex\n");
 		return 1;
 	}
 
 	if (0 != pthread_mutex_destroy(&mutex2)) {
-		perror("Could not destroy mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutex_destroy(&mutex3)) {
 		perror("Could not destroy mutex\n");
 		return 1;
 	}
