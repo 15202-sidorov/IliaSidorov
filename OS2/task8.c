@@ -7,7 +7,7 @@
 
 long THREAD_NUMBER = 0;
 int isCanceled = 0;
-pthread_t thread[THREAD_NUMBER];
+pthread_t *thread;
 
 typedef struct {
 	int thread_id;
@@ -16,7 +16,7 @@ typedef struct {
 
 void sigint_handler( int sig ) {
 	if (sig == SIGINT) {
-		
+		isCanceled = 1;
 	}
 	return;
 }
@@ -42,11 +42,16 @@ void *count_sum( void * arg ) {
 
 
 int main( int argc, char **argv ) {
+	if (argc < 2) {
+		printf("Threads amount is not entered\n");
+		return 1;
+	}
 	struct sigaction action;
 	action.sa_handler = sigint_handler;
 	sigaction(SIGINT,&action,NULL);
 	double pi = 0;
 	THREAD_NUMBER = atoi(argv[1]);
+	thread = (pthread_t *)malloc(THREAD_NUMBER * sizeof(pthread_t));
 	thread_attributes attributes[THREAD_NUMBER];
 
 	for (int i = 0; i < THREAD_NUMBER; i++) {
@@ -83,10 +88,12 @@ int main( int argc, char **argv ) {
 
 	if ( isRight )  {
 		printf("Pi is : %f\n",pi * 4.0);
+		free(thread);
 		return 0;
 	}
 	else {
 		printf("Could not count pi value\n");
+		free(thread);
 		return 1;
 	}
 
