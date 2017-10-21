@@ -6,9 +6,7 @@
 
 #define LINES_AMOUNT 10
 
-pthread_mutex_t mutex;
-pthread_mutex_t mutex2;
-pthread_mutex_t mutex3;
+pthread_mutex_t mutex[LINES_AMOUNT];
 
 //should check out so called not deadblocking type of mutexes
 //also atributes and so forth about mutexes
@@ -19,14 +17,15 @@ pthread_mutex_t mutex3;
 
 //the body of a new routine ( will be passed as a pointer)
 void *new_start_routine( void * arg ) {
+	for (int i = 1; i < LINES_AMOUNT; i += 2) {
+		pthread_mutex_lock(mutex + i);
+	}
 
-	for (int i = 0; i < LINES_AMOUNT; i++) {
-		pthread_mutex_lock(&mutex);
-		pthread_mutex_lock(&mutex3);
-		printf("New routine printf\n");
-		fflush(stdout);
-		pthread_mutex_lock(&mutex2);
-		pthread_mutex_unlock(&mutex3);
+	for (int i = 1; i < LINES_AMOUNT; i += 2) {
+		pthread_mutex_lock(mutex + i - 1);
+		pthread_mutex_unlock(mutex + i - 1);
+		printf("CHILD\n");
+		pthread_mutex_unlock(mutex + i);
 	
 	}
 
@@ -48,59 +47,35 @@ int main( int argc, char **argv ) {
 		perror("Could not set mutex attributes type\n");
 		return 1;
 	}
+
+	for (int i = 0; i < LINES_AMOUNT; i++) {
+		if (0 != pthread_mutex_init(mutex + i, &mutex_attr)) {
+			perror("Could not initialize mutex\n");
+			return 1;
+		}
+
+		if ( !(i % 2) ) {
+			pthread_mutex_lock(mutex + i);
+		}
+	}
 	
-	if (0 != pthread_mutex_init(&mutex,&mutex_attr)) {
-		perror("Could not create mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutex_init(&mutex2,&mutex_attr)) {
-		perror("Could not create mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutex_init(&mutex3,&mutex_attr)) {
-		perror("Could not create mutex\n");
-		return 1;
-	}
-
-	pthread_mutex_lock(&mutex);
 	if (0 != pthread_create(&thread, NULL, new_start_routine, NULL)) {
 		perror("Could not create routine\n");
 		return 1;
 	}
 
+	for (int i = 0; i < LINES_AMOUNT; i += 2) {
+		printf("PARENT\n");
+		pthread_mutex_unlock(mutex + i);
+		pthread_mutex_lock(mutex + i + 1);
+		pthread_mutex_unlock(mutex + i + 1);
+	}
+
 	for (int i = 0; i < LINES_AMOUNT; i++) {
-		pthread_mutex_lock(&mutex2);
-		printf("Parent routine printf\n");
-		fflush(stdout);
-		if (i == 0) {
-			pthread_mutex_unlock(&mutex);
-			sleep(1);
+		if (0 != pthread_mutex_destroy(mutex + i)) {
+			perror("Could not destroy mutex\n");
+			return 1;
 		}
-
-		pthread_mutex_lock(&mutex3);
-		pthread_mutex_unlock(&mutex2);
-	}
-
-	if (0 != pthread_join(thread,NULL)) {
-		perror("Could not join the routine\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutex_destroy(&mutex)) {
-		perror("Could not destroy mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutex_destroy(&mutex2)) {
-		perror("Could not destroy mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutex_destroy(&mutex3)) {
-		perror("Could not destroy mutex\n");
-		return 1;
 	}
 
 	if (0 != pthread_mutexattr_destroy(&mutex_attr)) {
