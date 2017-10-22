@@ -12,6 +12,8 @@
 
 //-lrt!!
 
+///Именнованные семафоры!!!!
+
 sem_t *shared_mem;
 
 void printPARENT() {
