@@ -3,34 +3,22 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
-
+#include <semaphore.h>
 
 #define LINES_AMOUNT 10
 
-pthread_mutex_t mutex;
-pthread_cond_t mainThreadReady;
-pthread_cond_t childThreadReady;
+sem_t sem1;
+sem_t sem2;
 
-//should check out so called not deadblocking type of mutexes
-//also atributes and so forth about mutexes
-
-//condition variable
 //PROCESS_SHARED PROCESS_PRIVATE
-//opaque type
 
-//the body of a new routine ( will be passed as a pointer)
+//the body of a new routine ( will be passed as a pointer )
 void *new_start_routine( void * arg ) {
 
 	for (int i = 0; i < LINES_AMOUNT; i++) {
-		if (i != LINES_AMOUNT - 1) pthread_mutex_lock(&mutex);
+		sem_wait(&sem1);
 		printf("CHILD\n");
-		pthread_cond_signal(&childThreadReady);
-		if (i != LINES_AMOUNT - 1) {
-			pthread_cond_wait(&mainThreadReady,&mutex);
-		}
-		else {
-			pthread_mutex_unlock(&mutex);
-		}
+		sem_post(&sem2);
 	}
 
 	return 0;
@@ -40,30 +28,14 @@ void *new_start_routine( void * arg ) {
 int main( int argc, char **argv ) {
 	
 	pthread_t thread;
-	pthread_mutexattr_t mutex_attr;
 
-	if (0 != pthread_mutexattr_init(&mutex_attr)) {
-		perror("Could not init mutex attributes\n");
-		return 1;
-	}
-	
-	if (0 != pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_ERRORCHECK)) {
-		perror("Could not set mutex attributes type\n");
-		return 1;
-	}
-	
-	if (0 != pthread_mutex_init(&mutex,&mutex_attr)) {
-		perror("Could not create mutex\n");
+	if (0 != sem_init(&sem1, 0, 0)) {
+		perror("Could not initialize semaphore\n");
 		return 1;
 	}
 
-	if (0 != pthread_cond_init(&mainThreadReady, NULL)) {
-		perror("Could not create condition for mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_cond_init(&childThreadReady, NULL)) {
-		perror("Could not create condition for mutex\n");
+	if (0 != sem_init(&sem2, 0, 1)) {
+		perror("Could not initialize semaphore\n");
 		return 1;
 	}
 
@@ -73,15 +45,9 @@ int main( int argc, char **argv ) {
 	}
 
 	for (int i = 0; i < LINES_AMOUNT; i++) {
-		if (i != LINES_AMOUNT - 1) pthread_mutex_lock(&mutex);
+		sem_wait(&sem2);
 		printf("PARENT\n");
-		pthread_cond_signal(&mainThreadReady);
-		if (i != LINES_AMOUNT - 1) {
-			pthread_cond_wait(&childThreadReady, &mutex);
-		}
-		else {
-			pthread_mutex_unlock(&mutex);
-		}
+		sem_post(&sem1);
 	}
 
 	if (0 != pthread_join(thread,NULL)) {
@@ -89,27 +55,16 @@ int main( int argc, char **argv ) {
 		return 1;
 	}
 
-
-	if (0 != pthread_cond_destroy(&mainThreadReady)) {
-		perror("Could not destroy condition for mutex\n");
+	if (0 != sem_destroy(&sem1)) {
+		perror("Could not destroy semaphore\n");
 		return 1;
 	}
 
-	if (0 != pthread_cond_destroy(&childThreadReady)) {
-		perror("Could not create condition for mutex\n");
+	if (0 != sem_destroy(&sem2)) {
+		perror("Could not destroy semaphore\n");
 		return 1;
 	}
-
-
-	if (0 != pthread_mutex_destroy(&mutex)) {
-		perror("Could not destroy mutex\n");
-		return 1;
-	}
-
-	if (0 != pthread_mutexattr_destroy(&mutex_attr)) {
-		perror("Could not destroy mutex attributes\n");
-		return 1;
-	}
+	
 	
 
 	return 0;
