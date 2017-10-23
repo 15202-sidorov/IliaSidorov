@@ -14,56 +14,50 @@
 
 ///Именнованные семафоры!!!!
 
-sem_t *shared_mem;
-
-void printPARENT() {
+void printPARENT(sem_t *sem[2]) {
 	for (int i = 0; i < LINES_AMOUNT; i++) {
-		sem_wait(shared_mem + 1);
+		sem_wait(sem[1]);
 		printf("PARENT\n");
-		sem_post(shared_mem);
+		sem_post(sem[0]);
 	}
 
 	return;
 }
 
 void printCHILD() {
+	sem_t *sem[2];
+	sem[0] = sem_open("/semaphore1",  O_RDWR);
+	sem[1] = sem_open("/semaphore2",  O_RDWR);
+
+	if ((SEM_FAILED == sem[1]) || (SEM_FAILED == sem[0])) {
+		perror("Could not open or create semaphores 2\n");
+		exit(1);
+	}
+
 	for (int i = 0; i < LINES_AMOUNT; i++) {
-		sem_wait(shared_mem);
+		sem_wait(sem[0]);
 		printf("CHILD\n");
-		sem_post(shared_mem + 1);
+		sem_post(sem[1]);
+	}
+
+	if (( 0 != sem_unlink("/semaphore1") ) || ( 0 != sem_unlink("/semaphore2"))) {
+		perror("Could not unlink semaphore from process 2");
+		return;
 	}
 
 	return;
 }
 
 int main( int argc, char **argv ) {
-	int fd = shm_open("/mysemaphore", O_CREAT | O_RDWR, 0777);
-	if (-1 == fd) {
-		perror("Could not open shared memory object\n");
+	sem_t *sem[2];
+	sem[0] = sem_open("/semaphore1", O_CREAT | O_RDWR, S_IRWXU, 0);
+	sem[1] = sem_open("/semaphore2", O_CREAT | O_RDWR, S_IRWXU, 1);
+
+	if ((SEM_FAILED == sem[1]) || (SEM_FAILED == sem[0])) {
+		perror("Could not create semaphores 1\n");
 		return 1;
 	}
-
-	shared_mem = (sem_t *)mmap(NULL, 2 * sizeof(sem_t), PROT_NONE, MAP_SHARED, fd, 0); 
-	if (MAP_FAILED == shared_mem) {
-		perror("Could not map shared memory\n");
-		return 1;
-	}
-
-	close(fd);
-
-	//initilizing PROCESS SHARED semaphores
-	if (0 != sem_init(shared_mem, 1, 0)) {
-		perror("Could not initialize semaphore\n");
-		return 1;
-	}
-	printf("Inited\n");
-	if (0 != sem_init(shared_mem + 1, 1, 1)) {
-		perror("Could not initialize semaphore\n");
-		return 1;
-	}
-
-	printf("Inited\n");
-
+	
 	pid_t child_pid = fork();
 
 	if (-1 == child_pid) {
@@ -72,20 +66,10 @@ int main( int argc, char **argv ) {
 	}
 
 	if (0 == child_pid) {
-		printPARENT();
-		if (0 != sem_destroy(shared_mem)) {
-			perror("Could not destroy semaphore\n");
-			return 1;
-		}
-
-		if (0 != sem_destroy(shared_mem + 1)) {
-			perror("Could not destroy semaphore\n");
-			return 1;
-		}
-
-		if (0 != munmap(shared_mem, 2 * sizeof(sem_t))) {
-			perror("Could not unmap semaphore's shared memory\n");
-			return 1;
+		printPARENT(sem);
+		
+		if ((-1 == sem_close(sem[0]) || (-1 == sem_close(sem[1])))) {
+			perror("Could not close named semaphores\n");
 		}
 	
 	}
