@@ -4,16 +4,17 @@
 
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.UUID;
 
 public class User {
-    public User( String inputNickname, InetAddress inputAddr ) throws UnknownHostException {
+    public User( String inputNickname, InetSocketAddress inputAddr ) throws UnknownHostException {
         Nickname = inputNickname;
         address = inputAddr;
     }
 
-    public User( InetAddress inputAddr ) {
+    public User( InetSocketAddress inputAddr ) {
         address = inputAddr;
     }
 
@@ -25,13 +26,13 @@ public class User {
         return Nickname;
     }
 
-    public InetAddress getAddress() {
+    public InetSocketAddress getAddress() {
         return address;
     }
 
     private String Nickname = DEFAULT_NICKNAME;
     private UUID id = UUID.randomUUID();
-    private InetAddress address;
+    private InetSocketAddress address;
 
     private final static String DEFAULT_NICKNAME = "UnknownName";
 }
