@@ -63,7 +63,7 @@ int main( int argc, char **argv ) {
 		perror("Could not create routine\n");
 		return 1;
 	}
-
+	sleep(1);
 	for (int i = 0; i < LINES_AMOUNT; i += 2) {
 		printf("PARENT\n");
 		pthread_mutex_unlock(mutex + i);
