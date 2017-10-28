@@ -8,6 +8,10 @@
 long THREAD_NUMBER = 0;
 int isCanceled = 0;
 pthread_t *thread;
+pthread_barrier_t  barrier;
+
+pthread_mutex_t farestAccess;
+int farestThread = 0;
 
 typedef struct {
 	int thread_id;
@@ -29,13 +33,31 @@ void *count_sum( void * arg ) {
 	long start = ITARATIONS_NUMBER*attr.thread_id;
 	long end = start + ITARATIONS_NUMBER;
 	while ( !isCanceled ) {
+		pthread_mutex_lock(&farestAccess);
+		if (farestThread < end) {
+			farestThread = end;
+		}
+		pthread_mutex_unlock(&farestAccess);
 		for (long i = start; i < end; i++) {
 			result[0] += 1.0/(i*4.0 + 1.0);
 			result[0] -= 1.0/(i*4.0 + 3.0);
 		}	
 		start += padding;
-		end += padding;
+		end += padding;		
 	}
+
+	pthread_mutex_lock(&farestAccess);
+	
+	while (farestThread > end) {
+		for (long i = start; i < end; i++) {
+			result[0] += 1.0/(i*4.0 + 1.0);
+			result[0] -= 1.0/(i*4.0 + 3.0);
+		}	
+		start += padding;
+		end += padding;	
+	}
+	pthread_mutex_unlock(&farestAccess);
+	printf("%ld\n", end);
 	
 	pthread_exit(result);
 }
@@ -53,6 +75,7 @@ int main( int argc, char **argv ) {
 	THREAD_NUMBER = atoi(argv[1]);
 	thread = (pthread_t *)malloc(THREAD_NUMBER * sizeof(pthread_t));
 	thread_attributes attributes[THREAD_NUMBER];
+	pthread_mutex_init(&farestAccess, NULL);
 
 	for (int i = 0; i < THREAD_NUMBER; i++) {
 		attributes[i].thread_id = i;
@@ -85,6 +108,8 @@ int main( int argc, char **argv ) {
 			printf("pi is added\n");
 		}
 	}
+
+	pthread_mutex_destroy(&farestAccess);
 
 	if ( isRight )  {
 		printf("Pi is : %f\n",pi * 4.0);
