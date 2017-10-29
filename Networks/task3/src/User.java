@@ -30,6 +30,10 @@ public class User {
         return address;
     }
 
+    public void setSocketAddress(InetSocketAddress inputAddress) {
+        address = inputAddress;
+    }
+
     private String Nickname = DEFAULT_NICKNAME;
     private UUID id = UUID.randomUUID();
     private InetSocketAddress address;

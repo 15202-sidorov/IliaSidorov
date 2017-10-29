@@ -2,9 +2,6 @@
     Set of functions that work with bytes arrays send and received in packages
  */
 
-import com.sun.xml.internal.bind.v2.runtime.reflect.Lister;
-
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -59,7 +56,7 @@ public class PacketHandler {
         return Charset.defaultCharset().decode(bb).toString();
     }
 
-    public static SocketAddress getSocketAddress( byte[] inputBytes ) throws UnknownHostException   {
+    public static InetSocketAddress getSocketAddress( byte[] inputBytes ) throws UnknownHostException   {
         if ( PacketType.PARENT != getPacketType(inputBytes) ) {
            throw new PacketTypeException("No socket address in this package");
         }
@@ -107,16 +104,14 @@ public class PacketHandler {
     }
 
     //constructs new parent request
-    public static byte[] constructParentPacket(UUID ownerID, User parentUser) {
+    public static byte[] constructParentPacket(UUID ownerID, InetSocketAddress parentUserAddr) {
         byte[] result = new byte[GUID_SIZE + TYPE_SIZE + ADDRESS_SIZE + PORT_SIZE];
         ByteBuffer bb = ByteBuffer.wrap(result);
-        UUID id = parentUser.getID();
-        InetSocketAddress inputAddr = parentUser.getAddress();
         bb.putLong(ownerID.getLeastSignificantBits());
         bb.putLong(ownerID.getMostSignificantBits());
         bb.putShort(PacketType.PARENT);
-        bb.put(inputAddr.getAddress().getAddress());
-        bb.putInt(inputAddr.getPort());
+        bb.put(parentUserAddr.getAddress().getAddress());
+        bb.putInt(parentUserAddr.getPort());
         return result;
     }
 
