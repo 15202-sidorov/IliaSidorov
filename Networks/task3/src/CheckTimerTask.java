@@ -3,13 +3,14 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.TimerTask;
 import java.util.concurrent.SynchronousQueue;
 
 //!! put all messages to queue (those which are sent already and are intended to send)
 
 public class CheckTimerTask extends TimerTask {
-    public CheckTimerTask(HashMap<InetSocketAddress, SiblingStatus> inputSiblingsStatus,
+    public CheckTimerTask(Map<InetSocketAddress, SiblingStatus> inputSiblingsStatus,
                           ConnectionHandler inputConnectionHandler) {
         siblingsStatus = inputSiblingsStatus;
         connectionHandler = inputConnectionHandler;
@@ -18,13 +19,14 @@ public class CheckTimerTask extends TimerTask {
     @Override
     public void run() {
         try {
+            System.out.println("Check is on");
             for (InetSocketAddress address : siblingsStatus.keySet()) {
                 SiblingStatus currentSibling = siblingsStatus.get(address);
-                if (!currentSibling.packetQueueIsEmpty()) {
-                    if (!currentSibling.isAvailable()) {
-                        if (!currentSibling.getPingStatus()) {
+                if ( !currentSibling.packetQueueIsEmpty() ) {
+                    if ( !currentSibling.isAvailable() ) {
+                        if ( !currentSibling.getPingStatus() ) {
                             siblingsStatus.remove(address);
-                        } else if (!currentSibling.getAckStatus()) {
+                        } else if ( !currentSibling.getAckStatus() ) {
                             siblingsStatus.remove(address);
                         } else {
                             currentSibling.noPing();
@@ -32,18 +34,20 @@ public class CheckTimerTask extends TimerTask {
                         }
                     } else {
                         currentSibling.pullFromPacketQueue();
-                        if (!currentSibling.packetQueueIsEmpty()) {
+                        if ( !currentSibling.packetQueueIsEmpty() ) {
                             DatagramPacket packetToResend = currentSibling.pullFromPacketQueue();
                             connectionHandler.sendPACKET(packetToResend);
                         }
                     }
                 } else {
+                    connectionHandler.sendPACKET(currentSibling.getAddress(), PacketType.CONNECT);
                     currentSibling.noPing();
                 }
             }
         }
         catch ( InterruptedException ex ) {
             Thread.currentThread().isInterrupted();
+            System.out.println("interrupt");
         }
         catch ( IOException ex ) {
             ex.printStackTrace();
@@ -51,6 +55,6 @@ public class CheckTimerTask extends TimerTask {
 
     }
 
-    private HashMap<InetSocketAddress, SiblingStatus> siblingsStatus;
+    private Map<InetSocketAddress, SiblingStatus> siblingsStatus;
     private ConnectionHandler connectionHandler;
 }

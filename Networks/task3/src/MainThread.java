@@ -3,22 +3,27 @@ import java.net.*;
 
 public class MainThread {
     public static void main( String args[] ) {
-        String nickname = "IliaSidorov";
-        String text = "Hello there, how are you?";
         try {
-            User newUser = new User(nickname, new InetSocketAddress(0));
-            DatagramSocket socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(),0));
-            User parentUser =  new User("Parent",(InetSocketAddress) socket.getLocalSocketAddress());
-            byte[] dataPacket = PacketHandler.constructParentPacket(newUser.getID(), parentUser);
-            System.out.println(PacketHandler.getUserID(dataPacket));
-            System.out.println(PacketHandler.getPacketType(dataPacket));
-            System.out.println(PacketHandler.getSocketAddress(dataPacket));
+            String nickName = args[0];
+            System.out.println(args.length);
+            User nodeUser = new User(nickName, new InetSocketAddress(InetAddress.getLocalHost(), 0));
+            Node mainNode = null;
+            if (args[1].equals("ROOT")) {
+                mainNode = new Node(nodeUser);
+                mainNode.start();
+            } else {
+                if ( args.length != 3 ) {
+                    System.out.println("no argument");
+                    return;
+                }
+                mainNode = new Node(nodeUser, new InetSocketAddress(InetAddress.getByName(args[1]), Integer.parseInt(args[2])));
+                mainNode.start();
+            }
         }
-        catch ( UnknownHostException ex ) {
+        catch ( Exception ex ) {
             ex.printStackTrace();
         }
-        catch ( SocketException ex ) {
-            ex.printStackTrace();
-        }
+
+
     }
 }

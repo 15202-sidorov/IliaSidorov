@@ -12,12 +12,13 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 
 public class ReceivingThread extends Thread {
     public ReceivingThread(DatagramSocket inputNodeSocket,
                            SynchronousQueue<String> inputMessageQueue,
-                           HashMap<InetSocketAddress, SiblingStatus> inputSiblingsStatus,
+                           Map<InetSocketAddress, SiblingStatus> inputSiblingsStatus,
                            InetSocketAddress inputParentAddress,
                            List<InetSocketAddress> inputChildAddress,
                            ConnectionHandler inputConnectionHandler) {
@@ -27,6 +28,7 @@ public class ReceivingThread extends Thread {
         parentAddress = inputParentAddress;
         childAddress = inputChildAddress;
         connectionHandler = inputConnectionHandler;
+        System.out.println("Receiving thread is initialized");
     }
 
     @Override
@@ -70,12 +72,13 @@ public class ReceivingThread extends Thread {
     // The same as PING refresh status and if there is no child connected, add one.
     private void handleCONNECT( DatagramPacket receivedPacket ) throws InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-
+        System.out.println("Handling CONNECT from " + receivedFrom);
         if ( !siblingStatus.containsKey(receivedFrom) ) {
             siblingStatus.put(receivedFrom, new SiblingStatus(receivedFrom));
             if (receivedFrom != parentAddress) {
                 childAddress.add(receivedFrom);
             }
+            System.out.println("New sibling is added");
         }
         connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
     }
@@ -83,7 +86,7 @@ public class ReceivingThread extends Thread {
     //disconnect request from child
     private void handleDISCONNECT( DatagramPacket receivedPacket ) throws InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-
+        System.out.println("Handling DISCONNECT from " + receivedFrom);
         if ( siblingStatus.containsKey(receivedFrom) ) {
             siblingStatus.remove(receivedFrom);
             if ( !receivedFrom.equals(parentAddress) ) {
@@ -99,6 +102,7 @@ public class ReceivingThread extends Thread {
 
     private void handleACK( DatagramPacket receivedPacket ) {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
+        System.out.println("Handling ACK from " + receivedFrom);
         if ( siblingStatus.containsKey(receivedFrom) ) {
             siblingStatus.get(receivedFrom).gotAck();
         }
@@ -106,6 +110,7 @@ public class ReceivingThread extends Thread {
 
     private void handleROOT ( DatagramPacket receivedPacket ) throws InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
+        System.out.println("Handling ROOT from " + receivedFrom);
         connectionHandler.sendPACKET(parentAddress, PacketType.DISCONNECT);
         parentAddress = (InetSocketAddress) nodeSocket.getLocalSocketAddress();
         connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
@@ -113,6 +118,7 @@ public class ReceivingThread extends Thread {
 
     private void handleTEXT( DatagramPacket receivedPacket ) throws IOException, InterruptedException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
+        System.out.println("Handling TEXT from " + receivedFrom);
         if ( siblingStatus.containsKey(receivedFrom) ) {
             byte[] packetData = receivedPacket.getData();
             String textReceived = PacketHandler.getNickName(packetData) + ": " + PacketHandler.getText(packetData);
@@ -134,6 +140,7 @@ public class ReceivingThread extends Thread {
     private void handlePARENT( DatagramPacket receivedPacket )
             throws UnknownHostException, InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
+        System.out.println("Handling NEW PARENT from " + receivedFrom);
         if ( parentAddress.equals(receivedFrom) ) {
             connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
             parentAddress = PacketHandler.getSocketAddress(receivedPacket.getData());
@@ -143,7 +150,7 @@ public class ReceivingThread extends Thread {
 
     private DatagramSocket nodeSocket;
     private SynchronousQueue<String> messageQueue;
-    private HashMap<InetSocketAddress, SiblingStatus> siblingStatus;
+    private Map<InetSocketAddress, SiblingStatus> siblingStatus;
     private InetSocketAddress parentAddress;
     private List<InetSocketAddress> childAddress;
     private ConnectionHandler connectionHandler;

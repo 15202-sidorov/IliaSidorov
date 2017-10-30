@@ -8,11 +8,10 @@
 
  */
 
+import java.io.IOException;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.SynchronousQueue;
-
-import static java.util.Collections.synchronizedList;
 
 public class Node extends Thread {
     //root user
@@ -23,42 +22,60 @@ public class Node extends Thread {
         childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
         siblingStatus = Collections.synchronizedMap(new HashMap<InetSocketAddress, SiblingStatus>());
         messages = new SynchronousQueue<String>();
-        connectionHandler = new ConnectionHandler(nodeOwner, socket, (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus);
-
-        //generateThreads();
+        connectionHandler = new ConnectionHandler(nodeOwner, socket, siblingStatus);
+        generateThreads();
+        System.out.println("Root node is created, all threads started, current address is : " + nodeOwner.getAddress());
     }
 
     //child user
-    public Node(User nodeOwner, InetSocketAddress inputParentAddress) throws UnknownHostException, SocketException {
+    public Node(User nodeOwner, InetSocketAddress inputParentAddress)
+            throws UnknownHostException, SocketException, InterruptedException, IOException {
         socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
         nodeOwner.setSocketAddress((InetSocketAddress) socket.getLocalSocketAddress());
         parentAddress = inputParentAddress;
         childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
         siblingStatus = Collections.synchronizedMap(new HashMap<InetSocketAddress, SiblingStatus>());
         messages = new SynchronousQueue<String>();
-        connectionHandler = new ConnectionHandler(nodeOwner, socket,  (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus);
+        connectionHandler = new ConnectionHandler(nodeOwner, socket, siblingStatus);
+        generateThreads();
+        connectionHandler.sendCONNECT(parentAddress);
+        System.out.println("Child node is created, all threads started, current address is : " + nodeOwner.getAddress());
     }
 
     private void generateThreads() {
         messageThread = new MessageOutThread(messages);
         messageThread.start();
         receivingThread = new ReceivingThread(socket, messages,
-                                             (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus,
+                                              siblingStatus,
                                               parentAddress,childAddress, connectionHandler);
         receivingThread.start();
         checkTimer = new Timer();
-
-
+        checkTimer.scheduleAtFixedRate(new CheckTimerTask(siblingStatus,connectionHandler), TIMER_CHECK, TIMER_CHECK);
     }
 
     @Override
     public void run() {
-
+        Scanner textScanner = new Scanner(System.in);
+        String textEntered = null;
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                textEntered = textScanner.nextLine();
+                messages.put(textEntered);
+                for ( InetSocketAddress address : siblingStatus.keySet() ) {
+                    connectionHandler.sendTEXT(address, textEntered);
+                }
+            }
+        }
+        catch ( InterruptedException ex ) {
+            Thread.currentThread().interrupt();
+        }
+        catch ( IOException ex ) {
+            ex.printStackTrace();
+        }
     }
 
     private Thread messageThread;
     private Thread receivingThread;
-    private Thread sendingThread;
     private Timer checkTimer;
 
 
@@ -69,5 +86,7 @@ public class Node extends Thread {
 
     private SynchronousQueue<String> messages;
     private ConnectionHandler connectionHandler;
+
+    private final static int TIMER_CHECK = 1000;
 
 }
