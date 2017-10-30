@@ -23,8 +23,7 @@ public class Node extends Thread {
         childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
         siblingStatus = Collections.synchronizedMap(new HashMap<InetSocketAddress, SiblingStatus>());
         messages = new SynchronousQueue<String>();
-        packetQueue = new SynchronousQueue<DatagramPacket>();
-        connectionHandler = new ConnectionHandler(nodeOwner, socket, packetQueue, (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus);
+        connectionHandler = new ConnectionHandler(nodeOwner, socket, (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus);
 
         //generateThreads();
     }
@@ -37,14 +36,13 @@ public class Node extends Thread {
         childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
         siblingStatus = Collections.synchronizedMap(new HashMap<InetSocketAddress, SiblingStatus>());
         messages = new SynchronousQueue<String>();
-        packetQueue = new SynchronousQueue<DatagramPacket>();
-        connectionHandler = new ConnectionHandler(nodeOwner, socket, packetQueue, (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus);
+        connectionHandler = new ConnectionHandler(nodeOwner, socket,  (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus);
     }
 
     private void generateThreads() {
         messageThread = new MessageOutThread(messages);
         messageThread.start();
-        receivingThread = new ReceivingThread(socket, packetQueue, messages,
+        receivingThread = new ReceivingThread(socket, messages,
                                              (HashMap<InetSocketAddress, SiblingStatus>) siblingStatus,
                                               parentAddress,childAddress, connectionHandler);
         receivingThread.start();
@@ -70,7 +68,6 @@ public class Node extends Thread {
     private Map<InetSocketAddress ,SiblingStatus> siblingStatus;
 
     private SynchronousQueue<String> messages;
-    private SynchronousQueue<DatagramPacket> packetQueue;
     private ConnectionHandler connectionHandler;
 
 }

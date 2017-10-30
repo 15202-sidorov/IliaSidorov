@@ -4,25 +4,42 @@
     messages in protocol.
 
     Deals with packages.
+    Deals with acks and queues of all sorts.
 
  */
 
 
 //!! no packet queue many queues for each connection
+
+
 import java.io.IOException;
 import java.net.*;
 import java.util.HashMap;
-import java.util.concurrent.SynchronousQueue;
+
 
 public class ConnectionHandler {
     public ConnectionHandler(User inputNodeUser,
                              DatagramSocket inputNodeSocket,
-                             SynchronousQueue<DatagramPacket> inputPacketQueue,
                              HashMap<InetSocketAddress, SiblingStatus> inputSiblingStatus) {
         nodeUser = inputNodeUser;
         nodeSocket = inputNodeSocket;
-        packetQueue = inputPacketQueue;
         siblingStatus = inputSiblingStatus;
+    }
+
+    public void sendPACKET( DatagramPacket packet ) throws InterruptedException, IOException {
+        InetSocketAddress destination = (InetSocketAddress) packet.getSocketAddress();
+        if ( !siblingStatus.containsKey(destination) ) {
+            return;
+        }
+
+        siblingStatus.get(destination).pushToPacketQueue(packet);
+        if ( !siblingStatus.get(destination).isAvailable() ) {
+            return;
+        }
+        nodeSocket.send(packet);
+        if (PacketHandler.getPacketType(packet.getData()) != PacketType.ACK) {
+            siblingStatus.get(destination).noAck();
+        }
     }
 
     public void sendPACKET(InetSocketAddress destination, short type) throws IOException, InterruptedException {
@@ -37,17 +54,15 @@ public class ConnectionHandler {
                 byte[] data = PacketHandler.constructPacket(nodeUser.getID(), PacketType.CONNECT);
                 DatagramPacket packet = new DatagramPacket(data, data.length);
                 packet.setSocketAddress(destination);
+                siblingStatus.get(destination).pushToPacketQueue(packet);
                 if ( !siblingStatus.get(destination).isAvailable() ) {
-                    packetQueue.put(packet);
                     return;
                 }
-                else {
-                    nodeSocket.send(packet);
-                    if (type != PacketType.ACK) {
-                        siblingStatus.get(destination).noAck();
-                    }
-                    return;
+                nodeSocket.send(packet);
+                if (type != PacketType.ACK) {
+                    siblingStatus.get(destination).noAck();
                 }
+
             }
         }
     }
@@ -56,6 +71,10 @@ public class ConnectionHandler {
         byte[] data = new byte[INITIAL_BUFFER_SIZE];
         DatagramPacket packet = new DatagramPacket(data, data.length);
         nodeSocket.receive(packet);
+        siblingStatus.get((InetSocketAddress)packet.getSocketAddress()).gotPing();
+        if ( PacketHandler.getPacketType(packet.getData()) == PacketType.ACK ) {
+            siblingStatus.get(packet.getSocketAddress()).gotAck();
+        }
 
         return packet;
     }
@@ -70,16 +89,16 @@ public class ConnectionHandler {
         DatagramPacket packet = new DatagramPacket(data, data.length);
         packet.setSocketAddress(destination);
         if ( !siblingStatus.get(destination).isAvailable() ) {
-            packetQueue.put(packet);
+            siblingStatus.get(destination).pushToPacketQueue(packet);
             return;
         }
 
+        siblingStatus.get(destination).pushToPacketQueue(packet);
         nodeSocket.send(packet);
         siblingStatus.get(destination).noAck();
     }
 
-    public void sendTEXT(InetSocketAddress destination,
-                            String text) throws IOException, InterruptedException {
+    public void sendTEXT(InetSocketAddress destination, String text) throws IOException, InterruptedException {
         if ( !siblingStatus.containsKey(destination) ) {
             return;
         }
@@ -87,9 +106,9 @@ public class ConnectionHandler {
         byte[] data = PacketHandler.constructTextPacket(nodeUser, text);
         DatagramPacket packet = new DatagramPacket(data, data.length);
         packet.setSocketAddress(destination);
+        siblingStatus.get(destination).pushToPacketQueue(packet);
 
         if ( !siblingStatus.get(destination).isAvailable() ) {
-            packetQueue.put(packet);
             return;
         }
 
@@ -99,7 +118,6 @@ public class ConnectionHandler {
 
     private User nodeUser;
     private DatagramSocket nodeSocket;
-    private SynchronousQueue<DatagramPacket> packetQueue;
     private HashMap<InetSocketAddress, SiblingStatus> siblingStatus;
 
     private static final int INITIAL_BUFFER_SIZE = 64;

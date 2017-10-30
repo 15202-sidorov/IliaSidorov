@@ -16,14 +16,12 @@ public class SiblingStatus {
         return address;
     }
 
-    public boolean noPing() {
+    public void noPing() {
         aliveStatus++;
-        return aliveStatus < CRITICAL_NO_PING_VALUE;
     }
 
-    public boolean noAck() {
+    public void noAck() {
         waitForAckStatus++;
-        return waitForAckStatus < CRITICAL_NO_ACK_VALUE;
     }
 
     public void gotPing() {
@@ -44,6 +42,18 @@ public class SiblingStatus {
 
     public boolean isAvailable() {
         return ((aliveStatus == 0) && (waitForAckStatus == 0));
+    }
+
+    public void pushToPacketQueue( DatagramPacket packet ) throws InterruptedException {
+        packetQueue.put(packet);
+    }
+
+    public DatagramPacket pullFromPacketQueue() throws InterruptedException {
+        return packetQueue.take();
+    }
+
+    public boolean packetQueueIsEmpty() {
+        return packetQueue.isEmpty();
     }
 
     private InetSocketAddress address;
