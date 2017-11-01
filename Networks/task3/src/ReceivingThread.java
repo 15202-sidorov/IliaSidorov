@@ -72,13 +72,13 @@ public class ReceivingThread extends Thread {
     // The same as PING refresh status and if there is no child connected, add one.
     private void handleCONNECT( DatagramPacket receivedPacket ) throws InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-        System.out.println("Handling CONNECT from " + receivedFrom);
+        //System.out.println("Handling CONNECT from " + receivedFrom);
         if ( !siblingStatus.containsKey(receivedFrom) ) {
             siblingStatus.put(receivedFrom, new SiblingStatus(receivedFrom));
+            System.out.println(receivedFrom + " has connected");
             if (receivedFrom != parentAddress) {
                 childAddress.add(receivedFrom);
             }
-            System.out.println("New sibling is added");
         }
         connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
     }
@@ -86,7 +86,6 @@ public class ReceivingThread extends Thread {
     //disconnect request from child
     private void handleDISCONNECT( DatagramPacket receivedPacket ) throws InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-        System.out.println("Handling DISCONNECT from " + receivedFrom);
         if ( siblingStatus.containsKey(receivedFrom) ) {
             siblingStatus.remove(receivedFrom);
             if ( !receivedFrom.equals(parentAddress) ) {
@@ -96,13 +95,13 @@ public class ReceivingThread extends Thread {
                 //if root disconnected without previously sending an ROOT or PARENT request
                 parentAddress = (InetSocketAddress) nodeSocket.getLocalSocketAddress();
             }
-            connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
+            System.out.println(receivedFrom + " disconnected manually");
         }
     }
 
-    private void handleACK( DatagramPacket receivedPacket ) {
+    private void handleACK( DatagramPacket receivedPacket ) throws InterruptedException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-        System.out.println("Handling ACK from " + receivedFrom);
+        //System.out.println("Handling ACK from " + receivedFrom);
         if ( siblingStatus.containsKey(receivedFrom) ) {
             siblingStatus.get(receivedFrom).gotAck();
         }
@@ -110,29 +109,24 @@ public class ReceivingThread extends Thread {
 
     private void handleROOT ( DatagramPacket receivedPacket ) throws InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-        System.out.println("Handling ROOT from " + receivedFrom);
+       // System.out.println("Handling ROOT from " + receivedFrom);
         connectionHandler.sendPACKET(parentAddress, PacketType.DISCONNECT);
         parentAddress = (InetSocketAddress) nodeSocket.getLocalSocketAddress();
-        connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
     }
 
     private void handleTEXT( DatagramPacket receivedPacket ) throws IOException, InterruptedException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-        System.out.println("Handling TEXT from " + receivedFrom);
+        //System.out.println("Handling TEXT from " + receivedFrom);
         if ( siblingStatus.containsKey(receivedFrom) ) {
             byte[] packetData = receivedPacket.getData();
             String textReceived = PacketHandler.getNickName(packetData) + ": " + PacketHandler.getText(packetData);
             messageQueue.put(textReceived);
-            connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
 
-            for (int i = 0; i < childAddress.size(); i++) {
-                if ( !receivedFrom.equals(childAddress.get(i)) ) {
-                    connectionHandler.sendTEXT(childAddress.get(i), textReceived);
+            for ( InetSocketAddress address : siblingStatus.keySet() ) {
+                if ( !receivedFrom.equals(address) ) {
+                    //System.out.println("RESEND");
+                    connectionHandler.sendTEXT(address, textReceived);
                 }
-            }
-
-            if ( !receivedFrom.equals(parentAddress) && !parentAddress.equals(nodeSocket.getLocalSocketAddress())) {
-                connectionHandler.sendTEXT(parentAddress, textReceived);
             }
         }
     }
@@ -140,9 +134,8 @@ public class ReceivingThread extends Thread {
     private void handlePARENT( DatagramPacket receivedPacket )
             throws UnknownHostException, InterruptedException, IOException {
         InetSocketAddress receivedFrom = (InetSocketAddress) receivedPacket.getSocketAddress();
-        System.out.println("Handling NEW PARENT from " + receivedFrom);
+        //System.out.println("Handling NEW PARENT from " + receivedFrom);
         if ( parentAddress.equals(receivedFrom) ) {
-            connectionHandler.sendPACKET(receivedFrom, PacketType.ACK);
             parentAddress = PacketHandler.getSocketAddress(receivedPacket.getData());
             connectionHandler.sendPACKET(parentAddress, PacketType.CONNECT);
         }

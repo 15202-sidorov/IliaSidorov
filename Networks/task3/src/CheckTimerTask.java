@@ -1,13 +1,21 @@
-import javax.xml.crypto.Data;
+/*
+    Timer timer task sets the scheduled timer in Node class.
+    It checks all statuses of registered connections.
+    If there is no ping from some of them for a long period of time
+        the connection is deleted from registered connections list.
+    If there is no ack from some node, the message waiting for ack to be received
+        is send once again.
+    If any of those conditions are true, node is no allowed to receive any messages,
+        and is regarded to be in unavailable state.
+    All messages coming to an unavailable node are put in the queue and actually send via socket,
+        when its state becomes available.
+ */
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TimerTask;
-import java.util.concurrent.SynchronousQueue;
-
-//!! put all messages to queue (those which are sent already and are intended to send)
 
 public class CheckTimerTask extends TimerTask {
     public CheckTimerTask(Map<InetSocketAddress, SiblingStatus> inputSiblingsStatus,
@@ -19,14 +27,15 @@ public class CheckTimerTask extends TimerTask {
     @Override
     public void run() {
         try {
-            System.out.println("Check is on ");
+            //System.out.println("Check is on ");
             for (InetSocketAddress address : siblingsStatus.keySet()) {
                 SiblingStatus currentSibling = siblingsStatus.get(address);
-                System.out.println( "QUEUE SIZE : " + currentSibling.getQueueSize() );
+                //System.out.println( "QUEUE SIZE : " + currentSibling.getQueueSize() );
                 if ( !currentSibling.packetQueueIsEmpty() ) {
                     if ( !currentSibling.isAvailable() ) {
                         if ( !currentSibling.getPingStatus() ) {
-                            System.out.println("REMOVING");
+                           // System.out.println("REMOVING");
+                            System.out.println(address + " disconnected");
                             siblingsStatus.remove(address);
                             continue;
                         } else if ( !currentSibling.getAckStatus() ) {
@@ -34,7 +43,6 @@ public class CheckTimerTask extends TimerTask {
                             connectionHandler.sendPACKET(currentSibling.pullFromPacketQueue());
                         }
                     } else {
-                        currentSibling.pullFromPacketQueue();
                         if ( !currentSibling.packetQueueIsEmpty() ) {
                             DatagramPacket packetToResend = currentSibling.pullFromPacketQueue();
                             connectionHandler.sendPACKET(packetToResend);

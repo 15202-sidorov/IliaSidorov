@@ -16,6 +16,7 @@ import java.util.concurrent.SynchronousQueue;
 public class Node extends Thread {
     //root user
     public Node(User nodeOwner) throws UnknownHostException, SocketException {
+        owner = nodeOwner;
         socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
         nodeOwner.setSocketAddress((InetSocketAddress) socket.getLocalSocketAddress());
         parentAddress = (InetSocketAddress) socket.getLocalSocketAddress();
@@ -30,6 +31,7 @@ public class Node extends Thread {
     //child user
     public Node(User nodeOwner, InetSocketAddress inputParentAddress)
             throws UnknownHostException, SocketException, InterruptedException, IOException {
+        owner = nodeOwner;
         socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
         nodeOwner.setSocketAddress((InetSocketAddress) socket.getLocalSocketAddress());
         parentAddress = inputParentAddress;
@@ -60,7 +62,6 @@ public class Node extends Thread {
         try {
             while (!Thread.currentThread().isInterrupted()) {
                 textEntered = textScanner.nextLine();
-                messages.put(textEntered);
                 for ( InetSocketAddress address : siblingStatus.keySet() ) {
                     connectionHandler.sendTEXT(address, textEntered);
                 }
@@ -78,7 +79,7 @@ public class Node extends Thread {
     private Thread receivingThread;
     private Timer checkTimer;
 
-
+    private User owner;
     private DatagramSocket socket;
     private InetSocketAddress parentAddress;
     private List<InetSocketAddress> childAddress;
@@ -87,6 +88,6 @@ public class Node extends Thread {
     private SynchronousQueue<String> messages;
     private ConnectionHandler connectionHandler;
 
-    private final static int TIMER_CHECK = 1000;
+    private final static int TIMER_CHECK = 3000;
 
 }

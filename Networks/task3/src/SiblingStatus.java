@@ -1,10 +1,14 @@
+/*
+
+    Sibling status describes the status of registered connection of the node.
+    It defined whether node is available or not. (see CheckTimerTask.java)
+ */
+
 
 
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
-//maybe make queue here for all messages
 
 public class SiblingStatus {
     public SiblingStatus( InetSocketAddress inputAddress) {
@@ -19,22 +23,23 @@ public class SiblingStatus {
     }
 
     public void noPing() {
-        System.out.println("Waiting for ping " + aliveStatus + " from " + address);
+      //  System.out.println("Waiting for ping " + aliveStatus + " from " + address);
         aliveStatus++;
     }
 
     public void noAck() {
-        System.out.println("Waiting for ack " + waitForAckStatus + " from " + address);
+       // System.out.println("Waiting for ack " + waitForAckStatus + " from " + address);
         waitForAckStatus++;
     }
 
     public void gotPing() {
-        System.out.println("Ping for " + address + " is received");
+       // System.out.println("Ping for " + address + " is received");
         aliveStatus = 0;
     }
 
-    public void gotAck() {
-        System.out.println("Ack for " + address + " is received");
+    public void gotAck() throws InterruptedException {
+        //System.out.println("Ack for " + address + " is received");
+        packetQueue.poll();
         waitForAckStatus = 0;
     }
 
@@ -47,7 +52,7 @@ public class SiblingStatus {
     }
 
     public boolean isAvailable() {
-        System.out.println("Checking out availability of " + address);
+       // System.out.println("Checking out availability of " + address);
         return ((aliveStatus == 0) && (waitForAckStatus == 0));
     }
 
@@ -56,17 +61,17 @@ public class SiblingStatus {
     }
 
     public void pushToPacketQueue( DatagramPacket packet ) throws InterruptedException {
-        System.out.println("Pushing packet to queue of " + address);
+      //  System.out.println("Pushing packet to queue of " + address);
         packetQueue.offer(packet);
     }
 
     public DatagramPacket pullFromPacketQueue() throws InterruptedException {
-        System.out.println("Pulling packet from queue of " + address);
+       // System.out.println("Pulling packet from queue of " + address);
         return packetQueue.poll();
     }
 
     public boolean packetQueueIsEmpty() {
-        System.out.println("Packet queue of " + address + " is " + packetQueue.isEmpty());
+        //System.out.println("Packet queue of " + address + " is " + packetQueue.isEmpty());
         return packetQueue.isEmpty();
     }
 

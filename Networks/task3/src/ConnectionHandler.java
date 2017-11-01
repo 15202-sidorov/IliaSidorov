@@ -1,10 +1,8 @@
 /*
 
     Connection handler sends and receives all types of
-    messages in protocol.
-
-    Deals with packages.
-    Deals with acks and queues of all sorts.
+        messages in protocol.
+    It deals with sockets and already combined by PacketHandler UDP packets.
 
  */
 
@@ -33,11 +31,12 @@ public class ConnectionHandler {
         if ( PacketType.ACK != PacketHandler.getPacketType(packet.getData()) ) {
             siblingStatus.get(destination).pushToPacketQueue(packet);
         }
+
         if ( !siblingStatus.get(destination).isAvailable() ) {
-            System.out.println("Node " + destination + " is not available at the moment");
+           // System.out.println("Node " + destination + " is not available at the moment");
             return;
         }
-        System.out.println("Node " + destination + " is available, sending packet");
+      //  System.out.println("Node " + destination + " is available, sending packet");
         nodeSocket.send(packet);
         if (PacketHandler.getPacketType(packet.getData()) != PacketType.ACK) {
             siblingStatus.get(destination).noAck();
@@ -47,7 +46,7 @@ public class ConnectionHandler {
     public void sendPACKET(InetSocketAddress destination, short type) throws IOException, InterruptedException {
         if (PacketType.exists(type)) {
             if ((type == PacketType.TEXT) || (type == PacketType.PARENT)) {
-                System.out.println("Trying to send TEXT or PARENT or CONNECT packet via incorrect method");
+                System.out.println("Trying to send TEXT or PARENT  packet via incorrect method");
                 return;
             }
             else if ( !siblingStatus.containsKey(destination) ) {
@@ -62,10 +61,10 @@ public class ConnectionHandler {
                     siblingStatus.get(destination).pushToPacketQueue(packet);
                 }
                 if ( !siblingStatus.get(destination).isAvailable() ) {
-                    System.out.println("Node " + destination + " is not available at the moment");
+                   // System.out.println("Node " + destination + " is not available at the moment");
                     return;
                 }
-                System.out.println("Node " + destination + " is available, sending packet");
+              //  System.out.println("Node " + destination + " is available, sending packet");
                 nodeSocket.send(packet);
                 if (type != PacketType.ACK) {
                     siblingStatus.get(destination).noAck();
@@ -80,21 +79,18 @@ public class ConnectionHandler {
     public DatagramPacket receivePacket() throws IOException, InterruptedException {
         byte[] data = new byte[INITIAL_BUFFER_SIZE];
         DatagramPacket packet = new DatagramPacket(data, data.length);
-        System.out.println("Receiving packet...");
+       // System.out.println("Receiving packet...");
         nodeSocket.receive(packet);
-        boolean packetIsAck = false;
+        boolean packetIsAck = PacketHandler.getPacketType(packet.getData()) == PacketType.ACK;
         InetSocketAddress recievedFrom = (InetSocketAddress)packet.getSocketAddress();
-        if ( siblingStatus.containsKey((InetSocketAddress)packet.getSocketAddress()) ) {
-            siblingStatus.get((InetSocketAddress)packet.getSocketAddress()).gotPing();
-            if ( PacketHandler.getPacketType(packet.getData()) == PacketType.ACK ) {
-                siblingStatus.get(packet.getSocketAddress()).gotAck();
-                packetIsAck = true;
-            }
+        if ( siblingStatus.containsKey( packet.getSocketAddress()) ) {
+            siblingStatus.get( packet.getSocketAddress( )).gotPing();
         }
+
         if ( !packetIsAck ) {
             sendPACKET((InetSocketAddress)packet.getSocketAddress(), PacketType.ACK);
         }
-        System.out.println("Packet is successfully received, siblings' statuses are updated");
+
         return packet;
     }
 
@@ -110,11 +106,11 @@ public class ConnectionHandler {
         packet.setSocketAddress(destination);
         siblingStatus.get(destination).pushToPacketQueue(packet);
         if ( !siblingStatus.get(destination).isAvailable() ) {
-            System.out.println("Node " + destination + " is not available at the moment");
+           // System.out.println("Node " + destination + " is not available at the moment");
             return;
         }
 
-        System.out.println("Node " + destination + " is available, sending packet");
+        // System.out.println("Node " + destination + " is available, sending packet");
         nodeSocket.send(packet);
         siblingStatus.get(destination).noAck();
     }
@@ -141,11 +137,11 @@ public class ConnectionHandler {
         siblingStatus.get(destination).pushToPacketQueue(packet);
 
         if ( !siblingStatus.get(destination).isAvailable() ) {
-            System.out.println("Node " + destination + " is not available at the moment");
+         //   System.out.println("Node " + destination + " is not available at the moment");
             return;
         }
 
-        System.out.println("Node " + destination + " is available, sending packet");
+       // System.out.println("Node " + destination + " is available, sending packet");
         nodeSocket.send(packet);
         siblingStatus.get(destination).noAck();
     }
