@@ -124,6 +124,9 @@ public class ConnectionHandler {
             siblingStatus.put(destination, new SiblingStatus(destination));
             sendPACKET(destination, PacketType.CONNECT);
         }
+        else {
+            sendPACKET(destination, PacketType.CONNECT);
+        }
     }
 
     public void sendTEXT(InetSocketAddress destination, String text) throws IOException, InterruptedException {

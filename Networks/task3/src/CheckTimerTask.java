@@ -22,12 +22,13 @@ public class CheckTimerTask extends TimerTask {
             System.out.println("Check is on ");
             for (InetSocketAddress address : siblingsStatus.keySet()) {
                 SiblingStatus currentSibling = siblingsStatus.get(address);
-                boolean resendCONNECT = false;
-                System.out.println( "QUEUE SIZE : " + currentSibling.getQueueSize());
+                System.out.println( "QUEUE SIZE : " + currentSibling.getQueueSize() );
                 if ( !currentSibling.packetQueueIsEmpty() ) {
                     if ( !currentSibling.isAvailable() ) {
                         if ( !currentSibling.getPingStatus() ) {
+                            System.out.println("REMOVING");
                             siblingsStatus.remove(address);
+                            continue;
                         } else if ( !currentSibling.getAckStatus() ) {
                             currentSibling.gotAck();
                             connectionHandler.sendPACKET(currentSibling.pullFromPacketQueue());
@@ -37,15 +38,16 @@ public class CheckTimerTask extends TimerTask {
                         if ( !currentSibling.packetQueueIsEmpty() ) {
                             DatagramPacket packetToResend = currentSibling.pullFromPacketQueue();
                             connectionHandler.sendPACKET(packetToResend);
+                            return;
                         }
                     }
                 }
-                connectionHandler.sendPACKET(currentSibling.getAddress(), PacketType.CONNECT);
-                currentSibling.noPing();
+                connectionHandler.sendCONNECT(address);
+                siblingsStatus.get(address).noPing();
             }
         }
         catch ( InterruptedException ex ) {
-            Thread.currentThread().isInterrupted();
+            Thread.currentThread().interrupt();
             System.out.println("interrupt");
         }
         catch ( IOException ex ) {
