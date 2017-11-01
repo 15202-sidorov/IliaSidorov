@@ -3,7 +3,6 @@
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.SynchronousQueue;
 
 //maybe make queue here for all messages
 
@@ -50,6 +49,10 @@ public class SiblingStatus {
     public boolean isAvailable() {
         System.out.println("Checking out availability of " + address);
         return ((aliveStatus == 0) && (waitForAckStatus == 0));
+    }
+
+    public int getQueueSize() {
+        return packetQueue.size();
     }
 
     public void pushToPacketQueue( DatagramPacket packet ) throws InterruptedException {

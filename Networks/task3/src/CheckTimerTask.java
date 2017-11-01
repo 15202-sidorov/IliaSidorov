@@ -19,18 +19,18 @@ public class CheckTimerTask extends TimerTask {
     @Override
     public void run() {
         try {
-            System.out.println("Check is on");
+            System.out.println("Check is on ");
             for (InetSocketAddress address : siblingsStatus.keySet()) {
                 SiblingStatus currentSibling = siblingsStatus.get(address);
+                boolean resendCONNECT = false;
+                System.out.println( "QUEUE SIZE : " + currentSibling.getQueueSize());
                 if ( !currentSibling.packetQueueIsEmpty() ) {
                     if ( !currentSibling.isAvailable() ) {
                         if ( !currentSibling.getPingStatus() ) {
                             siblingsStatus.remove(address);
                         } else if ( !currentSibling.getAckStatus() ) {
-                            siblingsStatus.remove(address);
-                        } else {
-                            currentSibling.noPing();
-                            currentSibling.noAck();
+                            currentSibling.gotAck();
+                            connectionHandler.sendPACKET(currentSibling.pullFromPacketQueue());
                         }
                     } else {
                         currentSibling.pullFromPacketQueue();
@@ -39,10 +39,9 @@ public class CheckTimerTask extends TimerTask {
                             connectionHandler.sendPACKET(packetToResend);
                         }
                     }
-                } else {
-                    connectionHandler.sendPACKET(currentSibling.getAddress(), PacketType.CONNECT);
-                    currentSibling.noPing();
                 }
+                connectionHandler.sendPACKET(currentSibling.getAddress(), PacketType.CONNECT);
+                currentSibling.noPing();
             }
         }
         catch ( InterruptedException ex ) {

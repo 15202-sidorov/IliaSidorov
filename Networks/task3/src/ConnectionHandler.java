@@ -30,7 +30,9 @@ public class ConnectionHandler {
             return;
         }
 
-        siblingStatus.get(destination).pushToPacketQueue(packet);
+        if ( PacketType.ACK != PacketHandler.getPacketType(packet.getData()) ) {
+            siblingStatus.get(destination).pushToPacketQueue(packet);
+        }
         if ( !siblingStatus.get(destination).isAvailable() ) {
             System.out.println("Node " + destination + " is not available at the moment");
             return;
@@ -53,10 +55,12 @@ public class ConnectionHandler {
                 return;
             }
             else {
-                byte[] data = PacketHandler.constructPacket(nodeUser.getID(), PacketType.CONNECT);
+                byte[] data = PacketHandler.constructPacket(nodeUser.getID(), type);
                 DatagramPacket packet = new DatagramPacket(data, data.length);
                 packet.setSocketAddress(destination);
-                siblingStatus.get(destination).pushToPacketQueue(packet);
+                if ( type != PacketType.ACK) {
+                    siblingStatus.get(destination).pushToPacketQueue(packet);
+                }
                 if ( !siblingStatus.get(destination).isAvailable() ) {
                     System.out.println("Node " + destination + " is not available at the moment");
                     return;
@@ -66,7 +70,6 @@ public class ConnectionHandler {
                 if (type != PacketType.ACK) {
                     siblingStatus.get(destination).noAck();
                 }
-
             }
         }
         else {
@@ -74,14 +77,22 @@ public class ConnectionHandler {
         }
     }
 
-    public DatagramPacket receivePacket() throws IOException {
+    public DatagramPacket receivePacket() throws IOException, InterruptedException {
         byte[] data = new byte[INITIAL_BUFFER_SIZE];
         DatagramPacket packet = new DatagramPacket(data, data.length);
         System.out.println("Receiving packet...");
         nodeSocket.receive(packet);
-        siblingStatus.get((InetSocketAddress)packet.getSocketAddress()).gotPing();
-        if ( PacketHandler.getPacketType(packet.getData()) == PacketType.ACK ) {
-            siblingStatus.get(packet.getSocketAddress()).gotAck();
+        boolean packetIsAck = false;
+        InetSocketAddress recievedFrom = (InetSocketAddress)packet.getSocketAddress();
+        if ( siblingStatus.containsKey((InetSocketAddress)packet.getSocketAddress()) ) {
+            siblingStatus.get((InetSocketAddress)packet.getSocketAddress()).gotPing();
+            if ( PacketHandler.getPacketType(packet.getData()) == PacketType.ACK ) {
+                siblingStatus.get(packet.getSocketAddress()).gotAck();
+                packetIsAck = true;
+            }
+        }
+        if ( !packetIsAck ) {
+            sendPACKET((InetSocketAddress)packet.getSocketAddress(), PacketType.ACK);
         }
         System.out.println("Packet is successfully received, siblings' statuses are updated");
         return packet;
