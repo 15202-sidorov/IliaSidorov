@@ -37,10 +37,11 @@ public class SiblingStatus {
         aliveStatus = 0;
     }
 
-    public void gotAck() throws InterruptedException {
+    public DatagramPacket gotAck() throws InterruptedException {
         //System.out.println("Ack for " + address + " is received");
-        packetQueue.poll();
+
         waitForAckStatus = 0;
+        return packetQueue.poll();
     }
 
     public boolean getPingStatus() {
@@ -80,6 +81,6 @@ public class SiblingStatus {
     private Integer waitForAckStatus;
     private ConcurrentLinkedQueue<DatagramPacket> packetQueue;
 
-    private final static Integer CRITICAL_NO_ACK_VALUE = 3;
+    private final static Integer CRITICAL_NO_ACK_VALUE = 1;
     private final static Integer CRITICAL_NO_PING_VALUE = 3;
 }

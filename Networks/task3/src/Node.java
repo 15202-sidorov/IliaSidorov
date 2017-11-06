@@ -88,6 +88,6 @@ public class Node extends Thread {
     private SynchronousQueue<String> messages;
     private ConnectionHandler connectionHandler;
 
-    private final static int TIMER_CHECK = 3000;
+    private final static int TIMER_CHECK = 1000;
 
 }

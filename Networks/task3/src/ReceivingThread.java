@@ -10,7 +10,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
@@ -36,6 +35,11 @@ public class ReceivingThread extends Thread {
         try {
             while ( !Thread.currentThread().isInterrupted() ) {
                 DatagramPacket receivedPacket = connectionHandler.receivePacket();
+                if ( receivedPacket == null ) {
+                    System.out.println("Dropping...");
+                    continue;
+                }
+
                 switch (PacketHandler.getPacketType(receivedPacket.getData())) {
                     case PacketType.CONNECT:
                         handleCONNECT(receivedPacket);

@@ -39,8 +39,12 @@ public class CheckTimerTask extends TimerTask {
                             siblingsStatus.remove(address);
                             continue;
                         } else if ( !currentSibling.getAckStatus() ) {
-                            currentSibling.gotAck();
-                            connectionHandler.sendPACKET(currentSibling.pullFromPacketQueue());
+                            DatagramPacket packetDropped = currentSibling.gotAck();
+                            if ( PacketType.CONNECT == PacketHandler.getPacketType(packetDropped.getData()) ) {
+                                currentSibling.gotPing();
+                            }
+
+                            connectionHandler.sendPACKET(packetDropped);
                         }
                     } else {
                         if ( !currentSibling.packetQueueIsEmpty() ) {
@@ -50,6 +54,7 @@ public class CheckTimerTask extends TimerTask {
                         }
                     }
                 }
+
                 connectionHandler.sendCONNECT(address);
                 siblingsStatus.get(address).noPing();
             }

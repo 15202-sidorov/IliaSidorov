@@ -9,7 +9,7 @@
 import java.io.IOException;
 import java.net.*;
 import java.util.Map;
-
+import java.util.Random;
 
 public class ConnectionHandler {
     public ConnectionHandler(User inputNodeUser,
@@ -18,6 +18,7 @@ public class ConnectionHandler {
         nodeUser = inputNodeUser;
         nodeSocket = inputNodeSocket;
         siblingStatus = inputSiblingStatus;
+        randomGenerator = new Random();
     }
 
 
@@ -57,14 +58,14 @@ public class ConnectionHandler {
                 byte[] data = PacketHandler.constructPacket(nodeUser.getID(), type);
                 DatagramPacket packet = new DatagramPacket(data, data.length);
                 packet.setSocketAddress(destination);
-                if ( type != PacketType.ACK) {
+                if ( type != PacketType.ACK ) {
                     siblingStatus.get(destination).pushToPacketQueue(packet);
                 }
                 if ( !siblingStatus.get(destination).isAvailable() ) {
                    // System.out.println("Node " + destination + " is not available at the moment");
                     return;
                 }
-              //  System.out.println("Node " + destination + " is available, sending packet");
+                // System.out.println("Node " + destination + " is available, sending packet");
                 nodeSocket.send(packet);
                 if (type != PacketType.ACK) {
                     siblingStatus.get(destination).noAck();
@@ -81,10 +82,15 @@ public class ConnectionHandler {
         DatagramPacket packet = new DatagramPacket(data, data.length);
        // System.out.println("Receiving packet...");
         nodeSocket.receive(packet);
+        boolean packetIsLost = (randomGenerator.nextInt(100) > LOST_PERSENT) && (PacketHandler.getPacketType(packet.getData()) != PacketType.ACK);
+        if ( packetIsLost ) {
+            return null;
+        }
+
         boolean packetIsAck = PacketHandler.getPacketType(packet.getData()) == PacketType.ACK;
         InetSocketAddress recievedFrom = (InetSocketAddress)packet.getSocketAddress();
         if ( siblingStatus.containsKey( packet.getSocketAddress()) ) {
-            siblingStatus.get( packet.getSocketAddress( )).gotPing();
+            siblingStatus.get( packet.getSocketAddress() ).gotPing();
         }
 
         if ( !packetIsAck ) {
@@ -149,6 +155,8 @@ public class ConnectionHandler {
     private User nodeUser;
     private DatagramSocket nodeSocket;
     private Map<InetSocketAddress, SiblingStatus> siblingStatus;
+    private Random randomGenerator;
 
     private static final int INITIAL_BUFFER_SIZE = 64;
+    private static final int LOST_PERSENT = 90;
 }
