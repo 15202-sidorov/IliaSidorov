@@ -23,7 +23,7 @@ public class SiblingStatus {
     }
 
     public void noPing() {
-      //  System.out.println("Waiting for ping " + aliveStatus + " from " + address);
+        //System.out.println("Waiting for ping " + aliveStatus + " from " + address);
         aliveStatus++;
     }
 
@@ -33,15 +33,16 @@ public class SiblingStatus {
     }
 
     public void gotPing() {
-       // System.out.println("Ping for " + address + " is received");
+        //System.out.println("Ping for " + address + " is received");
+        //System.out.println("Size : " + packetQueue.size());
         aliveStatus = 0;
     }
 
-    public DatagramPacket gotAck() throws InterruptedException {
+    public void gotAck() throws InterruptedException {
         //System.out.println("Ack for " + address + " is received");
-
+        //System.out.println("Size : " + packetQueue.size());
         waitForAckStatus = 0;
-        return packetQueue.poll();
+        packetQueue.poll();
     }
 
     public boolean getPingStatus() {
@@ -55,10 +56,6 @@ public class SiblingStatus {
     public boolean isAvailable() {
        // System.out.println("Checking out availability of " + address);
         return ((aliveStatus == 0) && (waitForAckStatus == 0));
-    }
-
-    public int getQueueSize() {
-        return packetQueue.size();
     }
 
     public void pushToPacketQueue( DatagramPacket packet ) throws InterruptedException {
@@ -82,5 +79,5 @@ public class SiblingStatus {
     private ConcurrentLinkedQueue<DatagramPacket> packetQueue;
 
     private final static Integer CRITICAL_NO_ACK_VALUE = 1;
-    private final static Integer CRITICAL_NO_PING_VALUE = 3;
+    private final static Integer CRITICAL_NO_PING_VALUE = 4;
 }

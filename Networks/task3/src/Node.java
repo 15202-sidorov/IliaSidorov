@@ -20,7 +20,7 @@ public class Node extends Thread {
         socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
         nodeOwner.setSocketAddress((InetSocketAddress) socket.getLocalSocketAddress());
         parentAddress = (InetSocketAddress) socket.getLocalSocketAddress();
-        childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
+        //childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
         siblingStatus = Collections.synchronizedMap(new HashMap<InetSocketAddress, SiblingStatus>());
         messages = new SynchronousQueue<String>();
         connectionHandler = new ConnectionHandler(nodeOwner, socket, siblingStatus);
@@ -35,7 +35,7 @@ public class Node extends Thread {
         socket = new DatagramSocket(new InetSocketAddress(InetAddress.getLocalHost(), 0));
         nodeOwner.setSocketAddress((InetSocketAddress) socket.getLocalSocketAddress());
         parentAddress = inputParentAddress;
-        childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
+        //childAddress = Collections.synchronizedList(new ArrayList<InetSocketAddress>());
         siblingStatus = Collections.synchronizedMap(new HashMap<InetSocketAddress, SiblingStatus>());
         messages = new SynchronousQueue<String>();
         connectionHandler = new ConnectionHandler(nodeOwner, socket, siblingStatus);
@@ -49,7 +49,7 @@ public class Node extends Thread {
         messageThread.start();
         receivingThread = new ReceivingThread(socket, messages,
                                               siblingStatus,
-                                              parentAddress,childAddress, connectionHandler);
+                                              parentAddress,/*childAddress,*/ connectionHandler);
         receivingThread.start();
         checkTimer = new Timer();
         checkTimer.scheduleAtFixedRate(new CheckTimerTask(siblingStatus,connectionHandler), TIMER_CHECK, TIMER_CHECK);
@@ -62,16 +62,66 @@ public class Node extends Thread {
         try {
             while (!Thread.currentThread().isInterrupted()) {
                 textEntered = textScanner.nextLine();
+                if ( "QUID".equals(textEntered) ) {
+                    shutdownFunction();
+                    return;
+                }
+
                 for ( InetSocketAddress address : siblingStatus.keySet() ) {
                     connectionHandler.sendTEXT(address, textEntered);
                 }
             }
+            receivingThread.interrupt();
+            messageThread.interrupt();
+            checkTimer.cancel();
+
         }
+
         catch ( InterruptedException ex ) {
+            receivingThread.interrupt();
+            messageThread.interrupt();
+            checkTimer.cancel();
             Thread.currentThread().interrupt();
+
         }
         catch ( IOException ex ) {
             ex.printStackTrace();
+        }
+    }
+
+    private void shutdownFunction() throws IOException, InterruptedException {
+        System.out.println("SHUTDOWN, trying to disconnect manually ...");
+        receivingThread.interrupt();
+        messageThread.interrupt();
+        checkTimer.cancel();
+        InetSocketAddress chosedChild = null;
+        //in case node is root, need to choose new root and connect others to them
+        if ( parentAddress.equals(owner.getAddress()) ) {
+            if ( !siblingStatus.isEmpty() ) {
+                for ( InetSocketAddress address : siblingStatus.keySet() ) {
+                    if ( siblingStatus.get(address).isAvailable() ) {
+                        chosedChild = address;
+                        continue;
+                    }
+                }
+
+                System.out.println("Send root");
+                connectionHandler.sendPACKET(chosedChild, PacketType.ROOT);
+                for ( InetSocketAddress address : siblingStatus.keySet() ) {
+                    if ( !address.equals(chosedChild) ) {
+                        connectionHandler.sendPARENT(address, chosedChild);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        System.out.println("Sending new parent to all children");
+        for (InetSocketAddress address : siblingStatus.keySet()) {
+            if ( !address.equals(parentAddress) ) {
+                connectionHandler.sendPARENT(parentAddress, address);
+            }
         }
     }
 
@@ -82,7 +132,7 @@ public class Node extends Thread {
     private User owner;
     private DatagramSocket socket;
     private InetSocketAddress parentAddress;
-    private List<InetSocketAddress> childAddress;
+    //private List<InetSocketAddress> childAddress;
     private Map<InetSocketAddress ,SiblingStatus> siblingStatus;
 
     private SynchronousQueue<String> messages;

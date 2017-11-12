@@ -21,6 +21,20 @@ public class ConnectionHandler {
         randomGenerator = new Random();
     }
 
+    //send packet even if node is not available ( used only for resending )
+    public void sendPACKET_PUSH( DatagramPacket packet ) throws InterruptedException, IOException {
+        InetSocketAddress destination = (InetSocketAddress) packet.getSocketAddress();
+        if ( ! siblingStatus.containsKey(destination) ) {
+            System.out.println("Tried to send packet to unregistered node");
+            return;
+        }
+        if ( PacketType.ACK != PacketHandler.getPacketType(packet.getData()) ) {
+            siblingStatus.get(destination).pushToPacketQueue(packet);
+        }
+
+        nodeSocket.send(packet);
+    }
+
 
     public void sendPACKET( DatagramPacket packet ) throws InterruptedException, IOException {
         InetSocketAddress destination = (InetSocketAddress) packet.getSocketAddress();
@@ -31,6 +45,10 @@ public class ConnectionHandler {
 
         if ( PacketType.ACK != PacketHandler.getPacketType(packet.getData()) ) {
             siblingStatus.get(destination).pushToPacketQueue(packet);
+        }
+        else {
+            nodeSocket.send(packet);
+            return;
         }
 
         if ( !siblingStatus.get(destination).isAvailable() ) {
@@ -58,18 +76,23 @@ public class ConnectionHandler {
                 byte[] data = PacketHandler.constructPacket(nodeUser.getID(), type);
                 DatagramPacket packet = new DatagramPacket(data, data.length);
                 packet.setSocketAddress(destination);
+
                 if ( type != PacketType.ACK ) {
                     siblingStatus.get(destination).pushToPacketQueue(packet);
                 }
+                else {
+                    nodeSocket.send(packet);
+                    return;
+                }
+
                 if ( !siblingStatus.get(destination).isAvailable() ) {
                    // System.out.println("Node " + destination + " is not available at the moment");
                     return;
                 }
                 // System.out.println("Node " + destination + " is available, sending packet");
                 nodeSocket.send(packet);
-                if (type != PacketType.ACK) {
-                    siblingStatus.get(destination).noAck();
-                }
+                siblingStatus.get(destination).noAck();
+
             }
         }
         else {
@@ -82,19 +105,24 @@ public class ConnectionHandler {
         DatagramPacket packet = new DatagramPacket(data, data.length);
        // System.out.println("Receiving packet...");
         nodeSocket.receive(packet);
+        boolean packetIsAck = PacketHandler.getPacketType(packet.getData()) == PacketType.ACK;
+        boolean packetIsParent = PacketHandler.getPacketType(packet.getData()) == PacketType.PARENT;
         boolean packetIsLost = (randomGenerator.nextInt(100) > LOST_PERSENT) && (PacketHandler.getPacketType(packet.getData()) != PacketType.ACK);
         if ( packetIsLost ) {
             return null;
         }
 
-        boolean packetIsAck = PacketHandler.getPacketType(packet.getData()) == PacketType.ACK;
-        InetSocketAddress recievedFrom = (InetSocketAddress)packet.getSocketAddress();
-        if ( siblingStatus.containsKey( packet.getSocketAddress()) ) {
-            siblingStatus.get( packet.getSocketAddress() ).gotPing();
+        InetSocketAddress receivedFrom = (InetSocketAddress)packet.getSocketAddress();
+        if ( siblingStatus.containsKey( receivedFrom ) )  {
+            siblingStatus.get( receivedFrom ).gotPing();
         }
 
-        if ( !packetIsAck ) {
-            sendPACKET((InetSocketAddress)packet.getSocketAddress(), PacketType.ACK);
+        if ( !packetIsAck && !packetIsParent ) {
+            //System.out.println("SENDING ACK");
+            sendPACKET( receivedFrom , PacketType.ACK);
+        }
+        else {
+            if ( packetIsAck ) siblingStatus.get( receivedFrom ).gotAck();
         }
 
         return packet;
@@ -158,5 +186,5 @@ public class ConnectionHandler {
     private Random randomGenerator;
 
     private static final int INITIAL_BUFFER_SIZE = 64;
-    private static final int LOST_PERSENT = 90;
+    private static final int LOST_PERSENT = 100;
 }

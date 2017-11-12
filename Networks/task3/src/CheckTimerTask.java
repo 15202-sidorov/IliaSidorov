@@ -39,12 +39,9 @@ public class CheckTimerTask extends TimerTask {
                             siblingsStatus.remove(address);
                             continue;
                         } else if ( !currentSibling.getAckStatus() ) {
-                            DatagramPacket packetDropped = currentSibling.gotAck();
-                            if ( PacketType.CONNECT == PacketHandler.getPacketType(packetDropped.getData()) ) {
-                                currentSibling.gotPing();
-                            }
-
-                            connectionHandler.sendPACKET(packetDropped);
+                            //System.out.println("NO ACK");
+                            DatagramPacket packetDropped = siblingsStatus.get(address).pullFromPacketQueue();
+                            connectionHandler.sendPACKET_PUSH(packetDropped);
                         }
                     } else {
                         if ( !currentSibling.packetQueueIsEmpty() ) {

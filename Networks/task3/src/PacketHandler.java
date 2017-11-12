@@ -73,9 +73,8 @@ public class PacketHandler {
 
     //constructs any other type of packet handled by protocol
     public static byte[] constructPacket(UUID id, short type) {
-        if ((type == PacketType.PARENT) ||
-           (type == PacketType.ROOT) ||
-           (type == PacketType.TEXT)) {
+        if ((type == PacketType.PARENT)  ||
+            (type == PacketType.TEXT)) {
             throw new PacketTypeException("Bad constructor for such type");
         }
         byte[] result = new byte[GUID_SIZE + TYPE_SIZE];
