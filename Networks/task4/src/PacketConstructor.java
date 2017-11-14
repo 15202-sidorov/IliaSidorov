@@ -45,7 +45,7 @@ public class PacketConstructor {
     public static byte[] buildSYQ( int sequenceNumber, int bufferSpaceAvailable ) {
         byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + DATA_SIZE + HASH_CODE_SIZE];
         ByteBuffer buffer = ByteBuffer.wrap(result);
-        buffer.putShort(Flags.SYQ_FLAG);
+        buffer.putShort(Flags.SYN_FLAG);
         buffer.putInt(sequenceNumber);
         buffer.putInt(0);
         buffer.putInt(bufferSpaceAvailable);

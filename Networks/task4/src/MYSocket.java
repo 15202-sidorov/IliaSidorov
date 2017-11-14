@@ -1,18 +1,39 @@
+/*
+
+    Should be used on clients side, in order to implement client's behavior.
+    Can also be used on server side, to send packets to client.
+
+    Connect method is used on client's side only.
+
+ */
+
 import java.net.*;
 
 public class MYSocket {
-    //created on server side
-    public MYSocket(InetSocketAddress inputAddress, DatagramSocket inputSocket) {
-        address = inputAddress; // in this case, this is remote address of socket
+    /*
+
+        Created on server's side.
+
+    */
+
+    public MYSocket(InetSocketAddress inputAddress, DatagramSocket inputSocket, ConnectionStatus inputStatus) {
+        remoteAddress = inputAddress; // in this case, this is remote address of socket
         mainSocket = inputSocket;
+        currentStatus = inputStatus;
+        serverAddress = (InetSocketAddress) inputSocket.getLocalSocketAddress();
     }
 
+    /*
 
-    //created on client side
+        Created on client's side
+
+    */
+
     public MYSocket() throws SocketException {
-        address = new InetSocketAddress(0); // local address of socket
-        mainSocket = new DatagramSocket(address);
-        address = (InetSocketAddress) mainSocket.getLocalSocketAddress();
+        remoteAddress = new InetSocketAddress(0); // local address of socket
+        mainSocket = new DatagramSocket(remoteAddress);
+        remoteAddress = (InetSocketAddress) mainSocket.getLocalSocketAddress();
+        currentStatus = new ConnectionStatus(remoteAddress);
     }
 
     public void connect( InetSocketAddress inputServerAddress ) {
@@ -28,14 +49,15 @@ public class MYSocket {
     }
 
     public InetSocketAddress getAddress() {
-        return address;
+        return remoteAddress;
     }
 
     public void close() {
 
     }
 
-    private InetSocketAddress address;
+    private InetSocketAddress remoteAddress;
     private InetSocketAddress serverAddress;
     private DatagramSocket mainSocket;
+    private ConnectionStatus currentStatus;
 }

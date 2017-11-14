@@ -1,41 +1,53 @@
+/*
+
+    Receiving thread receives all incoming packets from network.
+    If the connection is currently in non closed state, received packet is put in oldConnectionPackets,
+    Packet is put in newConnectionsPackets otherwise.
+
+ */
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 
 public class ReceivingThread extends Thread {
-   public ReceivingThread( DatagramSocket inputUDPSocket,
+    public ReceivingThread(DatagramSocket inputUDPSocket,
                            BlockingQueue<DatagramPacket> inputNewConnections,
-                           BlockingQueue<DatagramPacket> inputOldConnections ) {
-       newConnectionsPackets = inputNewConnections;
-       oldConnectionsPackets = inputOldConnections;
-       UDPSocket = inputUDPSocket;
-   }
+                           BlockingQueue<DatagramPacket> inputOldConnections,
+                           List<InetSocketAddress> inputEstablishedConnections) {
+        newConnectionsPackets = inputNewConnections;
+        oldConnectionsPackets = inputOldConnections;
+        UDPSocket = inputUDPSocket;
+        establishedConncetions =inputEstablishedConnections;
+    }
 
-   public void run() {
-       try {
-           byte[] data = new byte[PacketConstructor.getPacketSize()];
-           DatagramPacket packetReceived = new DatagramPacket(data, data.length);
-           UDPSocket.receive(packetReceived);
-           short flag = PacketConstructor.getFlag(packetReceived.getData());
-           if ( flag == (Flags.SYQ_FLAG | Flags.ACK_FLAG) ) {
+    public void run() {
+        try {
+            byte[] data = new byte[PacketConstructor.getPacketSize()];
+            DatagramPacket packetReceived = new DatagramPacket(data, data.length);
+            UDPSocket.receive(packetReceived);
+            InetSocketAddress receivedFrom = (InetSocketAddress) packetReceived.getSocketAddress();
+            if ( establishedConncetions.contains(receivedFrom) ) {
+                oldConnectionsPackets.put(packetReceived);
+            }
+            else {
                 newConnectionsPackets.put(packetReceived);
-           }
-           else {
-               oldConnectionsPackets.put(packetReceived);
-           }
-       }
-       catch ( IOException ex ) {
-           ex.printStackTrace();
-       }
-       catch ( InterruptedException ex ) {
-           Thread.currentThread().interrupt();
-       }
-   }
+            }
+        }
+        catch ( IOException ex ) {
+            ex.printStackTrace();
+        }
+        catch ( InterruptedException ex ) {
+            Thread.currentThread().interrupt();
+        }
+    }
 
-   private DatagramSocket UDPSocket;
-   private BlockingQueue<DatagramPacket> newConnectionsPackets;
-   private BlockingQueue<DatagramPacket> oldConnectionsPackets;
+    private DatagramSocket UDPSocket;
+    private BlockingQueue<DatagramPacket> newConnectionsPackets;
+    private BlockingQueue<DatagramPacket> oldConnectionsPackets;
+    private List<InetSocketAddress> establishedConncetions;
 }
