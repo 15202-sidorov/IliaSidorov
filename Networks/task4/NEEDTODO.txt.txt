@@ -1,0 +1,30 @@
+1) Make constructor for UDP (TCP) packet.
+2) One UDP socket on server.
+3) ConectionStatus ( all buffers are there and sibling state is too) 
+4) 	FUNCTIONALITY: 		SIDE:			STATES: 
+	
+	CONNECT();		CLIENT			CLOSED(Default state of connection)
+	ACCEPT();		SERVER			LISTEN(SERVER is waiting for client to send connect request)
+	SEND();			CLIENT/SERVER		SYN_SENT(CLIENT has send connect request and waits for ack)
+	RECEIVE();		CLIENT/SERVER		SYN_RECEIVED(SERVER has received connect request and sent ack and waits for ack back)
+	CLOSE();		CLIENT/SERVER		ESTABLISHED(SERVER has received ack, CLEINT has recieved ack from server and send ack back)
+							... (so forth)
+
+
+Listen handler
+ConnectionEstablish handler
+Closing handler
+send, receive accept ... the same
+
+
+
+class CONNECTION
+	STATE, 
+	InetSocketAddress (IP/PORT),
+	BUFFERS( buffer of messages that came out of order )
+
+TASK 1: 
+	--- DEAL WITH constuction of packet
+	--- Realize connection class 
+	--- States 
+	
