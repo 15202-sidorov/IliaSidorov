@@ -6,7 +6,7 @@
     -------------------------------
     |  FLAG   |   SEQ   |   ACK   |
     |-----------------------------|
-    |   MT    |   HASH  |  DATA   |
+    |   MT    |  SIZE   |  DATA   |
     -------------------------------
 
     FLAG -- Points out what kind of packet it is.
@@ -21,81 +21,72 @@
 
     MT   -- The size of receivers BUFFER. ( how many bytes server is ready to receive )
 
+    SIZE -- Size of data in packet.
+
     DATA -- Target data.
 
 */
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 public class PacketConstructor {
 
     public static byte[] buildACK( int sequenceNumber , int bytesReceived, int bufferSpaceAvailable ) {
-        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + DATA_SIZE];
+        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT ];
         ByteBuffer buffer = ByteBuffer.wrap(result);
         buffer.putShort(Flags.ACK_FLAG);
         buffer.putInt(sequenceNumber);
         buffer.putInt(bytesReceived);
         buffer.putInt(bufferSpaceAvailable);
-        int hashCode = Arrays.hashCode(result);
-        buffer.putInt(hashCode);
         return result;
     }
 
-    public static byte[] buildSYQ( int sequenceNumber, int bufferSpaceAvailable ) {
-        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + DATA_SIZE + HASH_CODE_SIZE];
+    public static byte[] buildSYN( boolean isAck ) {
+        byte[] result = new byte[FLAGS_SIZE];
         ByteBuffer buffer = ByteBuffer.wrap(result);
-        buffer.putShort(Flags.SYN_FLAG);
-        buffer.putInt(sequenceNumber);
-        buffer.putInt(0);
-        buffer.putInt(bufferSpaceAvailable);
-        int hashCode = Arrays.hashCode(result);
-        buffer.putInt(hashCode);
+        if ( !isAck ) {
+            buffer.putShort(Flags.SYN_FLAG);
+        }
+        else {
+            buffer.putShort((short) (Flags.SYN_FLAG | Flags.ACK_FLAG));
+        }
+
         return result;
     }
 
-    public static byte[] buildFIN( int sequenceNumber ) {
-        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + DATA_SIZE + HASH_CODE_SIZE];
+    public static byte[] buildFIN(  boolean isAck ) {
+        byte[] result = new byte[FLAGS_SIZE];
         ByteBuffer buffer = ByteBuffer.wrap(result);
-        buffer.putShort(Flags.FIN_FLAG);
-        buffer.putInt(sequenceNumber);
-        buffer.putInt(0);
-        buffer.putInt(0);
-        int hashCode = Arrays.hashCode(result);
-        buffer.putInt(hashCode);
+        if ( !isAck ) {
+            buffer.putShort(Flags.FIN_FLAG);
+        }
+        else {
+            buffer.putShort((short) (Flags.FIN_FLAG | Flags.ACK_FLAG));
+        }
+
         return result;
     }
 
-    public static byte[] buildRST( int sequenceNumber ) {
-        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + DATA_SIZE + HASH_CODE_SIZE];
+    public static byte[] buildRST( ) {
+        byte[] result = new byte[FLAGS_SIZE];
         ByteBuffer buffer = ByteBuffer.wrap(result);
         buffer.putShort(Flags.RST_FLAG);
-        buffer.putInt(sequenceNumber);
-        buffer.putInt(0);
-        buffer.putInt(0);
-        int hashCode = Arrays.hashCode(result);
-        buffer.putInt(hashCode);
+
         return result;
     }
 
     public static byte[] buildDEFAULT( int sequenceNumber, byte[] data ) {
-        if ( data.length > DATA_SIZE ) {
-            System.out.println("Too many data");
-            return null;
-        }
 
-        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + DATA_SIZE + HASH_CODE_SIZE];
+        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + SIZE_OF_DATA + data.length];
 
         ByteBuffer buffer = ByteBuffer.wrap(result);
         buffer.putShort(Flags.DEF_FLAG);
         buffer.putInt(sequenceNumber);
         buffer.putInt(0);
         buffer.putInt(0);
-        buffer.putInt(0);
+        buffer.putInt(data.length);
         buffer.put(data, 0, data.length);
-        buffer.position(FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT);
-        int hashCode = Arrays.hashCode(result);
-        buffer.putInt(hashCode);
         return result;
     }
 
@@ -121,7 +112,7 @@ public class PacketConstructor {
         return buffer.getInt();
     }
 
-    public static int getAuthenticHash( byte[] data ) {
+    public static int getDataSize( byte[] data ) {
         ByteBuffer buffer = ByteBuffer.wrap(data);
         buffer.position(FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT);
         return buffer.getInt();
@@ -129,21 +120,20 @@ public class PacketConstructor {
 
     public static byte[] getData( byte[] data ) {
         ByteBuffer buffer = ByteBuffer.wrap(data);
-        buffer.position(FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + HASH_CODE_SIZE);
-        byte[] returnBytes = new byte[data.length - FLAGS_SIZE - ACK_NUMBER_SIZE - SEQUENCE_NUMBER_SIZE - MT - HASH_CODE_SIZE];
+        buffer.position(FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + SIZE_OF_DATA );
+        byte[] returnBytes = new byte[data.length - FLAGS_SIZE - ACK_NUMBER_SIZE - SEQUENCE_NUMBER_SIZE - MT - SIZE_OF_DATA];
         buffer.get(returnBytes);
         return returnBytes;
     }
 
-    public static short getPacketSize() {
-        return FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + HASH_CODE_SIZE + MT + DATA_SIZE;
+    public static short getHeaderSize() {
+        return FLAGS_SIZE + ACK_NUMBER_SIZE + MT + SIZE_OF_DATA;
     }
 
 
     private static final short FLAGS_SIZE = 1;
     private static final short SEQUENCE_NUMBER_SIZE = 4;
     private static final short ACK_NUMBER_SIZE = 4;
-    private static final short HASH_CODE_SIZE = 4;
     private static final short MT = 4;
-    private static final short DATA_SIZE = 64;
+    private static final short SIZE_OF_DATA = 4;
 }

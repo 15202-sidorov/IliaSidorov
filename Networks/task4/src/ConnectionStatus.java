@@ -1,6 +1,7 @@
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
-import java.util.LinkedList;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /*
 
@@ -9,15 +10,15 @@ import java.util.LinkedList;
         -- Buffer ( Buffer of messages with wrong sequence numbers )
         -- Internet address
         -- Connection status ( see wikipedia )
-        -- Bytes ( received / send )
+        -- Bytes ( received / send ) !!!!!!!!!!!ConcurrentByteBuffer
 
  */
 
 public class ConnectionStatus {
     public ConnectionStatus( InetSocketAddress statusFor ) {
         address = statusFor;
-        bytesReceived = 0;
         sessionStatus = Status.CLOSED;
+        packetsToHandle = new ArrayBlockingQueue<DatagramPacket>(20);
     }
 
     public void setStatus( Status newStatus ) {
@@ -28,33 +29,21 @@ public class ConnectionStatus {
         return sessionStatus;
     }
 
+
     /*
-
         Finds packet in buffer with minimal sequence number.
-
     */
 
-    public DatagramPacket findPacketInBufferIfAvailable() {
-        if ( packetsToHandle.size() == 0 ) {
-            return null;
-        }
-        else {
-            int min = PacketConstructor.getSeq(packetsToHandle.get(0).getData());
-            DatagramPacket result = packetsToHandle.get(0);
-            for (int i = 1; i < packetsToHandle.size(); i++) {
-                int currentSeqNumber = PacketConstructor.getSeq(packetsToHandle.get(i).getData());
-                if ( min > currentSeqNumber ) {
-                    min = currentSeqNumber;
-                    result = packetsToHandle.get(i);
-                }
-            }
+    public DatagramPacket pollPacket() {
+        return packetsToHandle.poll();
+    }
 
-            return result;
-        }
+    public void packetReceived(DatagramPacket packet) {
+        packetsToHandle.add(packet);
     }
 
     private InetSocketAddress address;
-    private LinkedList<DatagramPacket> packetsToHandle;
-    private long bytesReceived;
+    private BlockingQueue<DatagramPacket> packetsToHandle;
+
     private Status sessionStatus;
 }

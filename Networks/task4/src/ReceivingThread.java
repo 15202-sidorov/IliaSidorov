@@ -10,32 +10,38 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
 
 public class ReceivingThread extends Thread {
     public ReceivingThread(DatagramSocket inputUDPSocket,
                            BlockingQueue<DatagramPacket> inputNewConnections,
-                           BlockingQueue<DatagramPacket> inputOldConnections,
-                           List<InetSocketAddress> inputEstablishedConnections) {
+                           Map<InetSocketAddress, ConnectionStatus> inputAllConnections) {
         newConnectionsPackets = inputNewConnections;
-        oldConnectionsPackets = inputOldConnections;
+        allConnections = inputAllConnections;
         UDPSocket = inputUDPSocket;
-        establishedConncetions =inputEstablishedConnections;
     }
 
     public void run() {
         try {
-            byte[] data = new byte[PacketConstructor.getPacketSize()];
-            DatagramPacket packetReceived = new DatagramPacket(data, data.length);
-            UDPSocket.receive(packetReceived);
-            InetSocketAddress receivedFrom = (InetSocketAddress) packetReceived.getSocketAddress();
-            if ( establishedConncetions.contains(receivedFrom) ) {
-                oldConnectionsPackets.put(packetReceived);
-            }
-            else {
-                newConnectionsPackets.put(packetReceived);
+            while ( !Thread.currentThread().isInterrupted() ) {
+                byte[] data = new byte[PacketConstructor.getHeaderSize() + BUFFER_SIZE];
+
+                DatagramPacket packetReceived = new DatagramPacket(data, data.length);
+                UDPSocket.receive(packetReceived);
+                InetSocketAddress receivedFrom = (InetSocketAddress) packetReceived.getSocketAddress();
+                if ( allConnections.containsKey(receivedFrom) ) {
+                    allConnections.get(receivedFrom).packetReceived(packetReceived);
+                }
+                else if ( (PacketConstructor.getFlag(packetReceived.getData()) == Flags.SYN_FLAG) ||
+                          (PacketConstructor.getFlag(packetReceived.getData()) == (Flags.SYN_FLAG | Flags.ACK_FLAG))
+                        ) {
+                    newConnectionsPackets.put(packetReceived);
+                }
+                else {
+                    System.out.println("Suspicious packet received, dropping ...");
+                }
             }
         }
         catch ( IOException ex ) {
@@ -49,5 +55,7 @@ public class ReceivingThread extends Thread {
     private DatagramSocket UDPSocket;
     private BlockingQueue<DatagramPacket> newConnectionsPackets;
     private BlockingQueue<DatagramPacket> oldConnectionsPackets;
-    private List<InetSocketAddress> establishedConncetions;
+    private Map<InetSocketAddress, ConnectionStatus> allConnections;
+
+    private final short BUFFER_SIZE = 64;
 }

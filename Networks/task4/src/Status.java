@@ -1,6 +1,5 @@
 public enum Status {
     CLOSED,         // default status
-    LISTEN,         // SERVER is waiting for client to send request
     SYN_SENT,       // CLIENT has send connection request to SERVER
     SYN_RECEIVED,   // SERVER has received request and send another request for CLIENT
     ESTABLISHED,    // Connection is established, transaction is in process
