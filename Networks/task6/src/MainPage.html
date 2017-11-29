@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat</title>
+
+    <script type="text/javascript" src="/client.js"> </script>
+
+    <style type="text/css">
+        #chatMessages {
+            position : absolute;
+            top : 0px;
+            left : 205px;
+            height : 500px;
+            width : 1000px;
+            background : #9DA2D7;
+        }
+
+        #chatUsers {
+            position : absolute;
+            top : 0px;
+            height : 500px;
+            width : 200px;
+        }
+
+        #messageBox {
+            position : relative;
+            background : white;
+            width : 800px;
+            height : 300px;
+            margin-left : 20px;
+            margin-right : 20px;
+            margin-bottom : 10px;
+            margin-up : 10px;
+            padding-up : 4px;
+        }
+
+        .enterMessageBox {
+            position : relative;
+            background : white;
+            width : 800px;
+            height : 15px;
+            resize : none;
+        }
+
+        .activeUser {
+            padding : 4px;
+        }
+
+        .message {
+            align : left;
+        }
+
+    </style>
+</head>
+    <body bgcolor="#D9DBF7" onload="displayUserName()">
+        <div>
+            <div id="chatMessages" align="center">
+                <div id="userLogin">
+
+                </div>
+
+                <input type="button" value="Logout" onclick="logoutEntered()">
+                <div id="messageBox"></div>
+                <div>
+                    <textarea class="enterMessageBox" rows="0">
+
+                    </textarea>
+                </div>
+                <div><input id="sendButton" type="button" value="Send"> </div>
+
+            </div>
+            <div id="chatUsers">
+                <h2> Users online : </h2>
+            </div>
+        </div>
+    </body>
+</html>
