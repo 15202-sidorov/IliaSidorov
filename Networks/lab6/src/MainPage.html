@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat</title>
+
+    <script type="text/javascript" src="/client.js"></script>
+    <script type="text/javascript" src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
+
+
+    <style type="text/css">
+        body{
+            width: 100%;
+            height: 100%;
+            background-color: #D9DBF7;
+            margin-left: 0;
+            align-content: center;
+        }
+
+        p {
+            font-size: 20px;
+        }
+
+        #chatMessages {
+            position : absolute;
+            top : 0;
+            left : 205px;
+            height : 500px;
+            width : 1000px;
+        }
+        #chatUsers {
+            position : absolute;
+            top : 0;
+            height : 500px;
+            width : 200px;
+        }
+        #messageBox {
+            position : relative;
+            color: black;
+            background : white;
+            width : 800px;
+            height : 300px;
+            margin-left : 20px;
+            margin-right : 20px;
+            margin-bottom : 10px;
+            font-size: 0.5em;
+        }
+
+        .enterMessageBox {
+            position : relative;
+            background : white;
+            width : 800px;
+            height : 15px;
+            resize : none;
+        }
+        #chatMessages{
+            margin-top: 10%;
+        }
+    </style>
+</head>
+<body onload="displayUserName()">
+<div>
+    <div id="chatUsers" >
+        <h2 id="usersH2"> Users online : </h2>
+    </div>
+    <div id="chatMessages" align="center">
+        <div id="userLogin">
+
+        </div>
+
+        <input type="button" value="Logout" onclick="logoutEntered()">
+        <div id="messageBox"></div>
+        <div>
+                    <textarea id="area" class="enterMessageBox" rows="0" name="Send"></textarea>
+        </div>
+        <div><input id="sendButton" type="button" value="Send" onclick="sendMessage()"> </div>
+
+    </div>
+
+</div>
+</body>
+</html>
