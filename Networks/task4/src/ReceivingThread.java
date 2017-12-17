@@ -34,9 +34,7 @@ public class ReceivingThread extends Thread {
                 if ( allConnections.containsKey(receivedFrom) ) {
                     allConnections.get(receivedFrom).packetReceived(packetReceived);
                 }
-                else if ( (PacketConstructor.getFlag(packetReceived.getData()) == Flags.SYN_FLAG) ||
-                          (PacketConstructor.getFlag(packetReceived.getData()) == (Flags.SYN_FLAG | Flags.ACK_FLAG))
-                        ) {
+                else if ( (PacketConstructor.getFlag(packetReceived.getData()) == Flags.SYN_FLAG) ) {
                     newConnectionsPackets.put(packetReceived);
                 }
                 else {
@@ -48,6 +46,7 @@ public class ReceivingThread extends Thread {
             ex.printStackTrace();
         }
         catch ( InterruptedException ex ) {
+            System.out.println("Interrupted");
             Thread.currentThread().interrupt();
         }
     }
@@ -57,5 +56,5 @@ public class ReceivingThread extends Thread {
     private BlockingQueue<DatagramPacket> oldConnectionsPackets;
     private Map<InetSocketAddress, ConnectionStatus> allConnections;
 
-    private final short BUFFER_SIZE = 64;
+    private final short BUFFER_SIZE = 1024;
 }

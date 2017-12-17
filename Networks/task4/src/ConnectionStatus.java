@@ -19,6 +19,7 @@ public class ConnectionStatus {
         address = statusFor;
         sessionStatus = Status.CLOSED;
         packetsToHandle = new ArrayBlockingQueue<DatagramPacket>(20);
+        isAlive = true;
     }
 
     public void setStatus( Status newStatus ) {
@@ -29,18 +30,24 @@ public class ConnectionStatus {
         return sessionStatus;
     }
 
+    public InetSocketAddress getAddress() {
+        return address;
+    }
 
     /*
         Finds packet in buffer with minimal sequence number.
     */
 
-    public DatagramPacket pollPacket() {
-        return packetsToHandle.poll();
+    public DatagramPacket pollPacket() throws InterruptedException {
+        return packetsToHandle.take();
     }
 
     public void packetReceived(DatagramPacket packet) {
-        packetsToHandle.add(packet);
+        isAlive = true;
+        packetsToHandle.offer(packet);
     }
+
+    public boolean isAlive;
 
     private InetSocketAddress address;
     private BlockingQueue<DatagramPacket> packetsToHandle;

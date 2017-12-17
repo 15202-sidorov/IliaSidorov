@@ -27,13 +27,12 @@
 
 */
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 public class PacketConstructor {
 
     public static byte[] buildACK( int sequenceNumber , int bytesReceived, int bufferSpaceAvailable ) {
-        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT ];
+        byte[] result = new byte[FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT];
         ByteBuffer buffer = ByteBuffer.wrap(result);
         buffer.putShort(Flags.ACK_FLAG);
         buffer.putInt(sequenceNumber);
@@ -119,10 +118,11 @@ public class PacketConstructor {
     }
 
     public static byte[] getData( byte[] data ) {
-        ByteBuffer buffer = ByteBuffer.wrap(data);
-        buffer.position(FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + SIZE_OF_DATA );
-        byte[] returnBytes = new byte[data.length - FLAGS_SIZE - ACK_NUMBER_SIZE - SEQUENCE_NUMBER_SIZE - MT - SIZE_OF_DATA];
-        buffer.get(returnBytes);
+            ByteBuffer buffer = ByteBuffer.wrap(data);
+            int dataSize = getDataSize(data);
+            byte[] returnBytes = new byte[dataSize];
+            buffer.position(FLAGS_SIZE + SEQUENCE_NUMBER_SIZE + ACK_NUMBER_SIZE + MT + SIZE_OF_DATA);
+            buffer.get(returnBytes);
         return returnBytes;
     }
 
@@ -131,7 +131,7 @@ public class PacketConstructor {
     }
 
 
-    private static final short FLAGS_SIZE = 1;
+    private static final short FLAGS_SIZE = 2;
     private static final short SEQUENCE_NUMBER_SIZE = 4;
     private static final short ACK_NUMBER_SIZE = 4;
     private static final short MT = 4;
