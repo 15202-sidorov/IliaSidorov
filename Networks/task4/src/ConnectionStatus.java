@@ -10,7 +10,7 @@ import java.util.concurrent.BlockingQueue;
         -- Buffer ( Buffer of messages with wrong sequence numbers )
         -- Internet address
         -- Connection status ( see wikipedia )
-        -- Bytes ( received / send ) !!!!!!!!!!!ConcurrentByteBuffer
+        -- Bytes ( received / send )
 
  */
 
@@ -32,6 +32,10 @@ public class ConnectionStatus {
 
     public InetSocketAddress getAddress() {
         return address;
+    }
+
+    public boolean queueIsEmpty() {
+        return packetsToHandle.isEmpty();
     }
 
     /*

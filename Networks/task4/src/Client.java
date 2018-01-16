@@ -14,6 +14,9 @@ public class Client {
             MYSocket.connect();
             byte[] data = MYSocket.receive();
             System.out.println(Charset.defaultCharset().decode(ByteBuffer.wrap(data)));
+            data = MYSocket.receive();
+            System.out.println(Charset.defaultCharset().decode(ByteBuffer.wrap(data)));
+
         }
         catch( Exception ex ) {
             ex.printStackTrace();

@@ -1,10 +1,8 @@
-import com.sun.xml.internal.bind.v2.runtime.reflect.Lister;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -20,19 +18,37 @@ public abstract class MYClientSocket {
 
     private class checkAliveTask extends TimerTask {
         public void run() {
-
-            if ( currentStatus.isAlive ) {
-                currentStatus.isAlive = false;
-            }
-            else {
-                try {
+            try {
+                if ((currentStatus.isAlive) || (currentStatus.getStatus() == Status.LISTEN)) {
+                    if (currentStatus.getStatus() == Status.LISTEN) {
+                        try {
+                            if (!currentStatus.queueIsEmpty()) {
+                                DatagramPacket cancelPacket = currentStatus.pollPacket();
+                                if (PacketConstructor.getFlag(cancelPacket.getData()) == Flags.FIN_FLAG) {
+                                    System.out.println("Connection is closed by other side");
+                                    closeSession();
+                                    currentStatus.setStatus(Status.CLOSED);
+                                    cancel();
+                                }
+                            }
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                    currentStatus.isAlive = false;
+                } else if (currentStatus.getStatus() == Status.ESTABLISHED) {
+                    UDPSocket.send(packetToSend);
+                } else {
                     resetConnection();
                     currentStatus.setStatus(Status.CLOSED);
                     cancel();
                 }
-                catch ( IOException ex ) {
-                    ex.printStackTrace();
-                }
+            }
+            catch ( IOException ex ) {
+                ex.printStackTrace();
             }
         }
     }
@@ -65,7 +81,7 @@ public abstract class MYClientSocket {
 
             System.out.println("Sending " + tmpBufferArray.length + " bytes");
             byte[] data = PacketConstructor.buildDEFAULT(sequenceNumber, tmpBufferArray);
-            DatagramPacket packetToSend = new DatagramPacket(data, data.length);
+            packetToSend = new DatagramPacket(data, data.length);
             packetToSend.setSocketAddress(currentStatus.getAddress());
             UDPSocket.send(packetToSend);
             System.out.println("Chunk is send, waiting for ack...");
@@ -81,7 +97,6 @@ public abstract class MYClientSocket {
                     break;
                 }
             }
-
             bytesHandled += tmpBufferArray.length;
             sequenceNumber++;
         }
@@ -100,7 +115,6 @@ public abstract class MYClientSocket {
             currentStatus.setStatus(Status.SYN_RECEIVED);
             establishSession();
         }
-
 
         if ( currentStatus.getStatus() != Status.ESTABLISHED ) {
             System.out.println("Connection is not established yet");
@@ -130,6 +144,12 @@ public abstract class MYClientSocket {
                 return null;
             }
             int size = PacketConstructor.getDataSize(packetReceived.getData());
+            if  ( sequenceNumber != PacketConstructor.getSeq(packetReceived.getData()) ) {
+                System.out.println("Wrong sequence number");
+                currentStatus.packetReceived(packetReceived);
+                continue;
+            }
+
             byte[] content = PacketConstructor.getData(packetReceived.getData());
             buffer.position(bytesReceived);
             buffer.put(content);
@@ -163,7 +183,11 @@ public abstract class MYClientSocket {
         while(true) {
             packet = currentStatus.pollPacket();
             if (PacketConstructor.getFlag(packet.getData()) == (Flags.FIN_FLAG | Flags.ACK_FLAG)) {
-               break;
+                packetData = PacketConstructor.buildFIN(true);
+                packet = new DatagramPacket(packetData, packetData.length);
+                packet.setSocketAddress(currentStatus.getAddress());
+                UDPSocket.send(packet);
+                break;
             }
 
             if (PacketConstructor.getFlag(packet.getData())  == (Flags.RST_FLAG)) {
@@ -239,7 +263,7 @@ public abstract class MYClientSocket {
                 }
             }
         }
-        else if ( currentStatus.getStatus() == Status.FIN_RECEIVED ) {
+        else if (( currentStatus.getStatus() == Status.FIN_RECEIVED ) || (currentStatus.getStatus() == Status.LISTEN)) {
             byte[] packetData = PacketConstructor.buildFIN(true);
             DatagramPacket packet = new DatagramPacket(packetData, packetData.length);
             packet.setSocketAddress(currentStatus.getAddress());
@@ -278,6 +302,7 @@ public abstract class MYClientSocket {
     protected ConnectionStatus currentStatus;
     protected DatagramSocket UDPSocket;
     protected Timer pingTimer;
+    protected DatagramPacket packetToSend;
 
     protected ByteBuffer buffer;
     protected static final short BUFFER_SIZE = 1024;

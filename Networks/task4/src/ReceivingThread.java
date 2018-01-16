@@ -13,7 +13,6 @@ import java.net.InetSocketAddress;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 
-
 public class ReceivingThread extends Thread {
     public ReceivingThread(DatagramSocket inputUDPSocket,
                            BlockingQueue<DatagramPacket> inputNewConnections,

@@ -5,4 +5,9 @@
       <module fileurl="file://$PROJECT_DIR$/task4.iml" filepath="$PROJECT_DIR$/task4.iml" />
     </modules>
   </component>
+  <dependences>
+    <groupId>javax.websocket</groupId>
+    <artifactId>javax.websocket-api</artifactId>
+    <version>1.0</version>
+  </dependences>
 </project>
